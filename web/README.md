@@ -36,16 +36,14 @@ npm run build
 
 ## 배포
 
-Vercel에 GitHub 저장소를 연결하면 자동 배포됩니다. 설정:
+Netlify에 GitHub 저장소를 연결하면 `main` 푸시마다 자동 배포됩니다.
 
-| 항목 | 값 |
-|---|---|
-| Framework Preset | Vite |
-| Build Command | `npm run build` |
-| Output Directory | `dist` |
-| Root Directory | 저장소에 이 폴더만 있다면 비워둠. 상위 폴더째 올렸다면 `web` |
+빌드 설정은 저장소 루트의 [`netlify.toml`](../netlify.toml)에 있으므로 대시보드에서
+따로 입력할 필요가 없습니다. 이 저장소는 웹앱과 펌웨어를 함께 담고 있어
+`base = "web"`으로 빌드 범위를 좁혀둔 상태입니다.
 
-Vercel은 HTTPS를 기본 제공하므로 WebHID 요구사항이 충족됩니다.
+WebHID는 HTTPS(또는 localhost)에서만 동작하는데, Netlify는 HTTPS를 기본
+제공하므로 별도 설정이 필요 없습니다.
 
 ## 관련
 

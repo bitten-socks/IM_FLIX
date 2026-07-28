@@ -1,0 +1,25 @@
+# Netlify build settings. Kept in the repo so the deploy config is versioned
+# and doesn't have to be re-entered in the dashboard.
+#
+# This repository holds both the web app (web/) and the device firmware
+# (QMK/), so the build has to be scoped to web/. `publish` is resolved
+# relative to `base`, meaning the built output lands at web/dist.
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# WebHID only hands a device to a page over HTTPS, and only after the user
+# picks it from the browser's own permission prompt. Chromium gates that
+# behind Permissions-Policy, which defaults to same-origin -- declared here
+# so the intent is explicit rather than incidental.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Permissions-Policy = "hid=(self)"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
