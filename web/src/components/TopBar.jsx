@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
 
 export default function TopBar() {
-  const { connected, connecting, isMock, connect, disconnect, tryReconnect, supported } =
-    useFlixStore();
+  const { connected, connecting, connect, disconnect, tryReconnect, supported } = useFlixStore();
 
   useEffect(() => {
     if (supported) tryReconnect();
@@ -27,11 +26,9 @@ export default function TopBar() {
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5 text-xs text-white/50">
           <span
-            className={`h-2 w-2 rounded-full ${
-              isMock ? 'bg-amber-400' : connected ? 'bg-emerald-400' : 'bg-white/20'
-            }`}
+            className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-white/20'}`}
           />
-          {isMock ? '🧪 목업 모드' : connected ? '연결됨' : '연결 안 됨'}
+          {connected ? '연결됨' : '연결 안 됨'}
         </span>
         <button
           onClick={connected ? disconnect : connect}

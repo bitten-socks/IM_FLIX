@@ -17,7 +17,6 @@ import {
   isPingAck,
   TOTAL_KEYS,
 } from '../lib/protocol';
-import { MockFlixDevice } from '../lib/mockDevice';
 
 const EMPTY_KEYMAP = Array.from({ length: TOTAL_KEYS }, () => ({ mod: 0, code: 0, isMedia: 0 }));
 
@@ -26,7 +25,6 @@ export const useFlixStore = create((set, get) => ({
   device: null,
   connected: false,
   connecting: false,
-  isMock: false,
   keymap: EMPTY_KEYMAP,
   selectedKey: null,
   lastSync: null,
@@ -47,13 +45,6 @@ export const useFlixStore = create((set, get) => ({
     } catch (err) {
       set({ error: err.message, connecting: false });
     }
-  },
-
-  // Exercises the UI/protocol flow end to end against an in-memory stand-in
-  // for the board (see lib/mockDevice.js), without needing hardware.
-  connectMock: () => {
-    get()._attachDevice(new MockFlixDevice());
-    set({ isMock: true });
   },
 
   tryReconnect: async () => {
@@ -99,7 +90,6 @@ export const useFlixStore = create((set, get) => ({
     set({
       device: null,
       connected: false,
-      isMock: false,
       keymap: EMPTY_KEYMAP,
       selectedKey: null,
       lastSync: null,
