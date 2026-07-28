@@ -1,0 +1,167 @@
+🚀 '도각이' 전용 웹 키매퍼(Dogaki Web Keymapper) 개발 전략 제안서
+
+본 제안서는 백엔드 인프라 유지비 0원으로 운영되는 정적 프론트엔드 웹 애플리케이션과 RP2040-Zero(KMK/CircuitPython) 간의 실시간 USB HID 통신 기반 웹 키매핑 시스템 개발 로드맵을 정의합니다.
+
+1. 시스템 아키텍처 및 기술 스택
+
+1.1 전체 아키텍처 (No-Backend WebHID Architecture)
+
+[ 사용자 브라우저 (Chrome / Edge / Whale) ]
+       │
+       ├─► [ UI / UX Layer ] : 3D/2D 키보드 비주얼라이저, 키 선택 패널
+       ├─► [ Keymapper Engine ] : 키코드 변환 및 패킷 생성기
+       └─► [ WebHID / WebUSB Manager ] : 브라우저 내장 USB 통신 드라이버
+               ▲
+               │  (USB Raw HID Packets / 64 Bytes)
+               ▼
+[ RP2040-Zero (도각이 MCU) ]
+       │
+       ├─► [ USB HID Stack ] : Raw HID 커스텀 리포트 수신기
+       ├─► [ Memory Manager ] : Flash/NVM 영구 기억장치 파서
+       └─► [ KMK Matrix Engine ] : 실시간 6키 스캔 및 입력 처리
+
+
+1.2 추천 기술 스택 (Tech Stack)
+
+Front-End Framework: React (Vite) 또는 Next.js (Static Export)
+
+Styling: Tailwind CSS + Shadcn UI (깔끔하고 세련된 키보드 커스텀 UI 구축)
+
+State Management: Zustand 또는 React Query (키맵 상태 및 연결 장치 상태 관리)
+
+Hardware Communication: Native Browser navigator.hid API
+
+Hosting / CI-CD: GitHub Pages 또는 Vercel (무료 SSL https:// 호스팅)
+
+2. 핵심 통신 프로토콜 설계 (WebHID Protocol)
+
+브라우저와 RP2040-Zero 간에 주고받을 64바이트 표준 HID 데이터 패킷 구조 규격입니다.
+
+2.1 패킷 구조 (64-Byte Raw HID Report)
+
+Byte Index
+
+Field
+
+Description
+
+Byte 0
+
+Command ID
+
+0x01: 키맵 읽기, 0x02: 키맵 쓰기, 0x03: 테스트 통신, 0xFF: 응답 OK
+
+Byte 1
+
+Layer ID
+
+층 레이어 번호 (0x00: Default Layer, 0x01: Fn Layer)
+
+Byte 2
+
+Key Index
+
+6개 키 중 변경할 인덱스 (0x00 ~ 0x05)
+
+Byte 3~4
+
+KeyCode
+
+설정할 HID 키코드 값 (예: 0x0004 -> 'A', 0x002C -> 'Space')
+
+Byte 5~63
+
+Reserved
+
+패딩(0x00) 또는 확장 매크로 데이터
+
+3. UI/UX 화면 구성 전략
+
+사용자가 직관적으로 키를 바꿀 수 있도록 3단계 인튜이티브 흐름으로 구성합니다.
+
+[ Step 1: 기기 연결 ] ──► [ Step 2: 키 선택 & 매핑 ] ──► [ Step 3: 실시간 동기화 ]
+  "도각이 연결하기"         시각화된 6키 레이아웃      저장 버튼 없이
+  버튼 클릭 및 선택        클릭 후 원하는 키 지정      MCU Flash에 자동 기록
+
+
+3.1 6키 가상 레이아웃 파트 (Interactive Key Matrix)
+
+물리적 PCB 및 하우징 형태(1행 4칸 + 2행 3칸)를 그대로 모사한 SVG/CSS 그리드 배치.
+
+현재 선택된 키를 강조 표시(Highlight)하고, 각 키에 현재 지정된 기능(글자, 볼륨, 단축키 등)을 직관적인 아이콘과 텍스트로 시각화.
+
+3.2 키 팔레트 파트 (Key Selector Palette)
+
+기본 문자열: A-Z, 0-9, F1-F12
+
+특수 기능/미디어: Volume Up/Down, Mute, Play/Pause, Brightness
+
+복합 단축키 (Macro): Ctrl+C, Ctrl+V, Win+Shift+S(캡처) 등 미리 세팅된 프리셋 제공
+
+4. 로드맵 및 단계별 개발 일렉션 (4-Phase Strategy)
+
+📌 Phase 1: PoC (개념 검증) & USB 루프백 테스트 (1주차)
+
+목표: 브라우저와 RP2040-Zero 간의 WebHID 신호 핑퐁 검증
+
+MCU 작업: CircuitPython/KMK 상에서 Raw HID 리포트를 수신하는 수신기 설치
+
+웹 작업: 간단한 HTML/JS 코드로 navigator.hid.requestDevice()를 실행하여 장치를 인식하고, 메시지 송수신 로그 출력 테스트
+
+📌 Phase 2: 핵심 키매핑 엔진 및 UI 개발 (2주차)
+
+목표: 프론트엔드 UI 구축 및 키 변경 기능 완성
+
+웹 작업: React 기반의 6키 비주얼 라이저 UI 제작 및 키 선택 팔레트 구현
+
+MCU 작업: 수신받은 64바이트 패킷 중 KeyCode를 읽어 KMK 내부 키맵 배열을 동적으로 교체하는 로직 추가
+
+📌 Phase 3: 비휘발성 저장소(NVM) 적용 & 안전성 확보 (3주차)
+
+목표: 전원을 껐다 켜도 변경된 키가 유지되도록 구현
+
+MCU 작업: 키가 변경될 때마다 RP2040의 Flash 메모리(MicroPython nvm 소량 영역)에 저장하고, 부팅 시 이를 읽어와 덮어씌우는 영구 저장 로직 구현
+
+예외 처리: 웹 연결 해제 시 자동 세이프가드, 잘못된 키코드 데이터 들어올 시 롤백 기능 추가
+
+📌 Phase 4: 배포, 프리셋 기능 및 브랜딩 (4주차)
+
+목표: 최종 웹 서비스 무료 배포 및 사용자 확장 기능 추가
+
+웹 기능:
+
+"개발자 모드", "작업용(복사/붙여넣기) 모드", "게이밍 모드" 등 원클릭 프리셋
+
+GitHub Pages / Vercel 자동 배포 파이프라인(CI/CD) 구축
+
+5. 핵심 기술적 위험요인 및 해결 방안 (Risk Management)
+
+위험 요소 (Risk)
+
+원인 및 여파
+
+해결 전략 (Mitigation)
+
+Chromium 브라우저 제약
+
+Safari, Firefox 등 일부 브라우저에서 WebHID 미지원
+
+접속 시 브라우저 지원 여부를 감지하여, 미지원 브라우저 접속 시 "Chrome / Edge 접속 권장" 안내 모달 띄움
+
+Flash 메모리 수명 차감
+
+키를 바꿀 때마다 Flash 메모리에 쓰면 부품 수명 영향
+
+웹 상에서 키를 누를 때 즉시 MCU 메모리(RAM)에만 적용하고, 1~2초간 추가 입력이 없을 때 Flash에 1회 저장하는 디바운스(Debounce) 로직 적용
+
+HTTPS 필수 보안 정책
+
+Localhost 외 환경에서는 HTTP 접속 시 WebHID 거부
+
+GitHub Pages, Vercel 등의 무료 SSL 호스팅 플랫폼을 사용하여 항상 https:// 환경 보장
+
+6. 결론
+
+본 전략을 적용하면, 추가 서버 비용 0원으로 유지보수가 지속 가능한 고성능 '도각이 전용 웹 매퍼'를 성공적으로 런칭할 수 있습니다.
+
+사용자는 프로그램을 설치하는 번거로움 없이 크롬 브라우저를 열어 언제 어디서나 자신만의 피젯 매크로 키를 세팅하는 최상의 경험을 누리게 됩니다.
