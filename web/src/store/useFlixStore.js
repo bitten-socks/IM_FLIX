@@ -12,13 +12,23 @@ import {
   buildPingPacket,
   buildMatrixPacket,
   buildBootloaderPacket,
+  buildReadKeyPacket,
+  buildWriteStepPacket,
+  buildWriteModePacket,
   parseKeymapResponse,
   parseMatrixResponse,
+  parseKeyDetailResponse,
   isPingAck,
+  KEY_MODE,
   TOTAL_KEYS,
 } from '../lib/protocol';
 
-const EMPTY_KEYMAP = Array.from({ length: TOTAL_KEYS }, () => ({ mod: 0, code: 0, isMedia: 0 }));
+const EMPTY_KEYMAP = Array.from({ length: TOTAL_KEYS }, () => ({
+  mod: 0,
+  code: 0,
+  isMedia: 0,
+  mode: KEY_MODE.DIRECT,
+}));
 
 export const useFlixStore = create((set, get) => ({
   supported: isWebHIDSupported(),
@@ -26,6 +36,9 @@ export const useFlixStore = create((set, get) => ({
   connected: false,
   connecting: false,
   keymap: EMPTY_KEYMAP,
+  // Full per-key detail (mode + macro steps), keyed by key index. Filled
+  // lazily -- the compact keymap dump covers the keycap row on its own.
+  keyDetails: {},
   selectedKey: null,
   lastSync: null,
   lastPing: null,
@@ -67,6 +80,14 @@ export const useFlixStore = create((set, get) => ({
         set({ matrixState: matrix });
         return;
       }
+      const detail = parseKeyDetailResponse(bytes);
+      if (detail) {
+        set((s) => ({
+          keyDetails: { ...s.keyDetails, [detail.keyIndex]: detail },
+          lastSync: Date.now(),
+        }));
+        return;
+      }
       const keys = parseKeymapResponse(bytes);
       if (keys) set({ keymap: keys, lastSync: Date.now() });
     });
@@ -91,6 +112,7 @@ export const useFlixStore = create((set, get) => ({
       device: null,
       connected: false,
       keymap: EMPTY_KEYMAP,
+      keyDetails: {},
       selectedKey: null,
       lastSync: null,
       lastPing: null,
@@ -143,6 +165,42 @@ export const useFlixStore = create((set, get) => ({
       return;
     }
     await get().disconnect();
+  },
+
+  // Pull the full detail (mode + every macro step) for one key. The compact
+  // keymap dump only carries step 0, so the macro editor needs this.
+  loadKeyDetail: async (keyIndex) => {
+    const { device } = get();
+    if (!device) return;
+    try {
+      await sendPacket(device, buildReadKeyPacket(keyIndex));
+    } catch (err) {
+      set({ error: `키 상세 읽기 실패: ${err.message}` });
+    }
+  },
+
+  // Switch a key between following the physical press (direct) and firing a
+  // fixed timed sequence (macro).
+  setKeyMode: async (keyIndex, mode, stepCount) => {
+    const { device } = get();
+    if (!device) return;
+    try {
+      await sendPacket(device, buildWriteModePacket({ keyIndex, mode, stepCount }));
+    } catch (err) {
+      set({ error: `모드 변경 실패: ${err.message}` });
+    }
+  },
+
+  // Write one step of a key's macro. The firmware echoes the whole key back,
+  // so local state is refreshed by the report handler rather than guessed at.
+  writeStep: async (step) => {
+    const { device } = get();
+    if (!device) return;
+    try {
+      await sendPacket(device, buildWriteStepPacket(step));
+    } catch (err) {
+      set({ error: `매크로 단계 저장 실패: ${err.message}` });
+    }
   },
 
   setSelectedKey: (index) =>
