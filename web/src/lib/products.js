@@ -14,6 +14,16 @@ export const VENDOR_ID = 0xfeed;
 // `columns` wide -- usable immediately, swapped for the real render later
 // without touching any component.
 const PRODUCTS = {
+  0xf104: {
+    id: 'vibe4',
+    name: 'FLIX VIBE 4',
+    keyCount: 4,
+    columns: 2,
+    artwork: null,
+    hotspots: null,
+    pins: ['GP0', 'GP1', 'GP2', 'GP3'],
+    matrixColumns: 2,
+  },
   0xf106: {
     id: 'vibe6',
     name: 'FLIX VIBE 6',
