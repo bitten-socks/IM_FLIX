@@ -7,11 +7,11 @@
 // to have plugged in, and then write our keymap packets into it. So the
 // vendor/product IDs are part of the match too.
 //
-// These must stay in sync with usb.vid / usb.pid in
-// QMK/flix_vibe6/keyboard.json. Changing them there without changing them
-// here makes already-shipped units invisible to the site.
-const FLIX_VENDOR_ID = 0xfeed;
-const FLIX_PRODUCT_ID = 0xf106;
+// The product IDs live in lib/products.js, which is also what tells the UI
+// how many keys a given model has. Adding a model there is enough for the
+// picker to accept it -- nothing here needs editing.
+
+import { VENDOR_ID, SUPPORTED_PRODUCT_IDS } from './products';
 
 const QMK_RAW_USAGE_PAGE = 0xff60;
 const QMK_RAW_USAGE = 0x61;
@@ -20,21 +20,19 @@ const QMK_RAW_USAGE = 0x61;
 // ID -- unlike a shared interface, reportId 0 is correct here.
 const REPORT_ID = 0;
 
-const FLIX_FILTERS = [
-  {
-    vendorId: FLIX_VENDOR_ID,
-    productId: FLIX_PRODUCT_ID,
-    usagePage: QMK_RAW_USAGE_PAGE,
-    usage: QMK_RAW_USAGE,
-  },
-];
+const FLIX_FILTERS = SUPPORTED_PRODUCT_IDS.map((productId) => ({
+  vendorId: VENDOR_ID,
+  productId,
+  usagePage: QMK_RAW_USAGE_PAGE,
+  usage: QMK_RAW_USAGE,
+}));
 
 export function isWebHIDSupported() {
   return typeof navigator !== 'undefined' && 'hid' in navigator;
 }
 
 function isFlixDevice(device) {
-  if (device.vendorId !== FLIX_VENDOR_ID || device.productId !== FLIX_PRODUCT_ID) {
+  if (device.vendorId !== VENDOR_ID || !SUPPORTED_PRODUCT_IDS.includes(device.productId)) {
     return false;
   }
   return Boolean(
@@ -52,7 +50,7 @@ export async function requestFlixDevice() {
   // carries the raw HID interface rather than trusting picker order.
   const device = devices.find(isFlixDevice);
   if (!device) {
-    throw new Error('선택한 기기가 FLIX VIBE 6이 아닙니다. 다시 선택해 주세요.');
+    throw new Error('선택한 기기가 FLIX 제품이 아닙니다. 다시 선택해 주세요.');
   }
   if (!device.opened) await device.open();
   return device;

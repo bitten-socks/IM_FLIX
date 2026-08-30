@@ -1,11 +1,12 @@
-// Raw HID packet protocol shared with the QMK firmware in QMK/flix_vibe6.
-// Layout is dictated by raw_hid_receive() in that keymap.c -- keep this file
-// and that handler in sync.
+// Raw HID packet protocol shared with the QMK firmware in QMK/users/flix.
+// Layout is dictated by raw_hid_receive() in flix.c -- keep this file and
+// that handler in sync.
+
+import { MAX_KEYS } from './products';
 
 // QMK fixes every raw HID report at RAW_EPSIZE (32) bytes in both
 // directions; a differently-sized report is rejected outright.
 export const PACKET_SIZE = 32;
-export const TOTAL_KEYS = 6;
 
 export const CMD = {
   READ_KEYMAP: 0x01,
@@ -16,14 +17,16 @@ export const CMD = {
   READ_KEY: 0x06,
   WRITE_STEP: 0x07,
   WRITE_MODE: 0x08,
+  IDENTIFY: 0x09,
   RESPONSE_OK: 0xff,
 };
 
-// Sentinels the firmware sends in byte[1] so replies can be told apart from
-// a keymap dump, whose byte[1] is a modifier mask (max 0x0F).
+// Sentinels the firmware sends in byte[1] so replies can be told apart from a
+// keymap dump, whose byte[1] is a packed flag/modifier byte (max 0xCF).
 export const PING_ACK_SENTINEL = 0xfe;
 export const MATRIX_DIAG_SENTINEL = 0xfd;
 export const KEY_DETAIL_SENTINEL = 0xfc;
+export const IDENTITY_SENTINEL = 0xfb;
 
 // Per-key behaviour, mirroring enum flix_key_mode in the firmware.
 export const KEY_MODE = {
@@ -34,17 +37,19 @@ export const KEY_MODE = {
   MACRO: 1,
 };
 
-// Steps a key may emit in macro mode. Bounded by what fits in one 32-byte
-// report alongside the header -- must match MAX_MACRO_STEPS in the firmware.
+// Steps a key may emit in macro mode. Must match MAX_MACRO_STEPS in the
+// firmware.
 export const MAX_MACRO_STEPS = 4;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
 export const MAX_STEP_MS = 5000;
 
-// bit7 of a step's mod byte carries the media flag; modifiers use bits 0-3.
+// A step's mod byte carries flags alongside the modifier bits.
 const STEP_FLAG_MEDIA = 0x80;
 const STEP_MOD_MASK = 0x0f;
+// Only present in the compact keymap dump, never stored in a step.
+const DUMP_FLAG_MACRO = 0x40;
 
 export function buildMatrixPacket() {
   const buf = new Uint8Array(PACKET_SIZE);
@@ -88,26 +93,32 @@ function toUint8Array(data) {
   return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 }
 
-// Compact keymap dump: step 0 plus the mode of every key, which is all the
-// keycap row needs. Returns null for other report types.
-export function parseKeymapResponse(data) {
+// Compact keymap dump: two bytes per key -- packed flags plus the keycode --
+// which is what keeps a 9-key product inside one 32-byte report. Modifiers,
+// the media flag and the macro flag all share the first byte.
+//
+// `keyCount` comes from the identified product, so one parser serves every
+// model. Returns null for other report types.
+export function parseKeymapResponse(data, keyCount) {
   const bytes = toUint8Array(data);
   if (bytes[0] !== CMD.RESPONSE_OK) return null;
   if (
     bytes[1] === PING_ACK_SENTINEL ||
     bytes[1] === MATRIX_DIAG_SENTINEL ||
-    bytes[1] === KEY_DETAIL_SENTINEL
+    bytes[1] === KEY_DETAIL_SENTINEL ||
+    bytes[1] === IDENTITY_SENTINEL
   ) {
     return null;
   }
+  const count = Math.min(keyCount ?? MAX_KEYS, MAX_KEYS);
   const keys = [];
-  for (let i = 0; i < TOTAL_KEYS; i++) {
-    const idx = 1 + i * 4;
+  for (let i = 0; i < count; i++) {
+    const flags = bytes[1 + i * 2];
     keys.push({
-      mod: bytes[idx],
-      code: bytes[idx + 1],
-      isMedia: bytes[idx + 2],
-      mode: bytes[idx + 3],
+      mod: flags & STEP_MOD_MASK,
+      isMedia: (flags & STEP_FLAG_MEDIA) !== 0 ? 1 : 0,
+      mode: (flags & DUMP_FLAG_MACRO) !== 0 ? KEY_MODE.MACRO : KEY_MODE.DIRECT,
+      code: bytes[1 + i * 2 + 1],
     });
   }
   return keys;
@@ -176,10 +187,33 @@ export function isPingAck(data) {
   return bytes[0] === CMD.RESPONSE_OK && bytes[1] === PING_ACK_SENTINEL;
 }
 
-// Debounced matrix state, one bitmask per row. Returns null for other
-// report types. A bit stays 0 while its switch reads unpressed.
-export function parseMatrixResponse(data) {
+// Debounced matrix state, one bitmask per matrix row. Row count varies by
+// product, so the caller says how many to read. A bit stays 0 while its
+// switch reads unpressed. Returns null for other report types.
+export function parseMatrixResponse(data, rowCount = 2) {
   const bytes = toUint8Array(data);
   if (bytes[0] !== CMD.RESPONSE_OK || bytes[1] !== MATRIX_DIAG_SENTINEL) return null;
-  return [bytes[2], bytes[3]];
+  const rows = [];
+  for (let r = 0; r < rowCount; r++) rows.push(bytes[2 + r]);
+  return rows;
+}
+
+export function buildIdentifyPacket() {
+  const buf = new Uint8Array(PACKET_SIZE);
+  buf[0] = CMD.IDENTIFY;
+  return buf;
+}
+
+// What the device says it is. Lets one deployed site keep working against
+// firmware older than itself instead of misreading it -- the USB product ID
+// says which model, this says which protocol that unit actually speaks.
+export function parseIdentityResponse(data) {
+  const bytes = toUint8Array(data);
+  if (bytes[0] !== CMD.RESPONSE_OK || bytes[1] !== IDENTITY_SENTINEL) return null;
+  return {
+    protocolVersion: bytes[2],
+    keyCount: bytes[3],
+    maxMacroSteps: bytes[4],
+    configVersion: bytes[5],
+  };
 }

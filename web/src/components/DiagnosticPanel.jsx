@@ -6,24 +6,23 @@ import { useFlixStore } from '../store/useFlixStore';
 // can be observed directly, which separates a dead switch/diode path from a
 // keycode-mapping problem.
 
-// Mirrors matrix_pins.direct in QMK/flix_vibe6/keyboard.json.
-const PIN_LAYOUT = [
-  { key: 'K1', pin: 'GP0', row: 0, bit: 0 },
-  { key: 'K2', pin: 'GP1', row: 0, bit: 1 },
-  { key: 'K3', pin: 'GP2', row: 0, bit: 2 },
-  { key: 'K4', pin: 'GP3', row: 1, bit: 0 },
-  { key: 'K5', pin: 'GP4', row: 1, bit: 1 },
-  { key: 'K6', pin: 'GP5', row: 1, bit: 2 },
-];
-
 const POLL_INTERVAL_MS = 100;
 
 export default function DiagnosticPanel() {
-  const { connected, matrixState, readMatrix } = useFlixStore();
+  const { connected, matrixState, readMatrix, product } = useFlixStore();
   const [polling, setPolling] = useState(false);
   const [everPressed, setEverPressed] = useState({});
 
   const enabled = new URLSearchParams(window.location.search).has('debug');
+
+  // Derived from the product's direct-pin layout, so a new model needs no
+  // change here.
+  const slots = product.pins.map((pin, index) => ({
+    key: `K${index + 1}`,
+    pin,
+    row: Math.floor(index / product.matrixColumns),
+    bit: index % product.matrixColumns,
+  }));
 
   useEffect(() => {
     if (!polling || !connected) return undefined;
@@ -34,7 +33,7 @@ export default function DiagnosticPanel() {
   // Latch every key seen pressed, so a brief tap isn't missed between polls.
   useEffect(() => {
     if (!matrixState) return;
-    const seen = PIN_LAYOUT.filter(({ row, bit }) => (matrixState[row] >> bit) & 1);
+    const seen = slots.filter(({ row, bit }) => (matrixState[row] >> bit) & 1);
     if (!seen.length) return;
     setEverPressed((prev) => {
       const next = { ...prev };
@@ -71,7 +70,7 @@ export default function DiagnosticPanel() {
       </p>
 
       <div className="grid grid-cols-3 gap-2">
-        {PIN_LAYOUT.map((slot) => {
+        {slots.map((slot) => {
           const down = isDown(slot);
           return (
             <div

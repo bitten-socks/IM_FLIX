@@ -8,7 +8,7 @@ import DiagnosticPanel from './components/DiagnosticPanel';
 import { useFlixStore } from './store/useFlixStore';
 
 export default function App() {
-  const { connected, connect, connecting, supported } = useFlixStore();
+  const { connected, connect, connecting, supported, product } = useFlixStore();
 
   return (
     <div className="min-h-screen bg-[#0b0c0f] text-white">
@@ -20,20 +20,20 @@ export default function App() {
         <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#15171c] p-10">
           <div className="mb-6 text-center">
             <p className="text-xs uppercase tracking-wider text-white/30">MY DEVICE</p>
-            <h1 className="text-lg font-bold text-white">FLIX VIBE 6</h1>
+            <h1 className="text-lg font-bold text-white">{connected ? product.name : "FLIX"}</h1>
           </div>
 
           <KeypadHero />
 
           {!connected && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0b0c0f]/80 backdrop-blur-sm">
-              <p className="text-sm text-white/60">FLIX VIBE 6가 연결되어 있지 않습니다</p>
+              <p className="text-sm text-white/60">FLIX 기기가 연결되어 있지 않습니다</p>
               <button
                 onClick={connect}
                 disabled={!supported || connecting}
                 className="rounded-xl bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {connecting ? '연결 중...' : '🔌 FLIX VIBE 6 연결하기'}
+                {connecting ? '연결 중...' : '🔌 FLIX 기기 연결하기'}
               </button>
             </div>
           )}

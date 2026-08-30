@@ -17,24 +17,26 @@ import {
   buildWriteModePacket,
   parseKeymapResponse,
   parseMatrixResponse,
+  parseIdentityResponse,
+  buildIdentifyPacket,
   parseKeyDetailResponse,
   isPingAck,
   KEY_MODE,
-  TOTAL_KEYS,
 } from '../lib/protocol';
+import { productForId, UNKNOWN_PRODUCT } from '../lib/products';
 
-const EMPTY_KEYMAP = Array.from({ length: TOTAL_KEYS }, () => ({
-  mod: 0,
-  code: 0,
-  isMedia: 0,
-  mode: KEY_MODE.DIRECT,
-}));
+const EMPTY_KEYMAP = [];
 
 export const useFlixStore = create((set, get) => ({
   supported: isWebHIDSupported(),
   device: null,
   connected: false,
   connecting: false,
+  // Which model is plugged in. Resolved from the USB product ID before any
+  // packet is exchanged, so the UI can size itself immediately.
+  product: UNKNOWN_PRODUCT,
+  // What the firmware reports about itself; null until it answers.
+  identity: null,
   keymap: EMPTY_KEYMAP,
   // Full per-key detail (mode + macro steps), keyed by key index. Filled
   // lazily -- the compact keymap dump covers the keycap row on its own.
@@ -70,12 +72,22 @@ export const useFlixStore = create((set, get) => ({
   },
 
   _attachDevice: (device) => {
+    // The USB product ID identifies the model on its own, so the layout is
+    // known before the device answers anything.
+    const product = productForId(device.productId) ?? UNKNOWN_PRODUCT;
+
     const stop = listenForReports(device, (bytes) => {
       if (isPingAck(bytes)) {
         set({ lastPing: Date.now() });
         return;
       }
-      const matrix = parseMatrixResponse(bytes);
+      const identity = parseIdentityResponse(bytes);
+      if (identity) {
+        set({ identity });
+        return;
+      }
+      const rowCount = Math.ceil(get().product.keyCount / get().product.matrixColumns) || 2;
+      const matrix = parseMatrixResponse(bytes, rowCount);
       if (matrix) {
         set({ matrixState: matrix });
         return;
@@ -88,14 +100,30 @@ export const useFlixStore = create((set, get) => ({
         }));
         return;
       }
-      const keys = parseKeymapResponse(bytes);
+      const keys = parseKeymapResponse(bytes, get().product.keyCount);
       if (keys) set({ keymap: keys, lastSync: Date.now() });
     });
     device.addEventListener('disconnect', () => get().disconnect());
-    set({ device, connected: true, connecting: false, _stopListening: stop, error: null });
-    sendPacket(device, buildReadPacket()).catch((err) =>
-      set({ error: `키맵 읽기 요청 실패: ${err.message}` }),
-    );
+    set({
+      device,
+      product,
+      connected: true,
+      connecting: false,
+      _stopListening: stop,
+      error: null,
+      keymap: Array.from({ length: product.keyCount }, () => ({
+        mod: 0,
+        code: 0,
+        isMedia: 0,
+        mode: KEY_MODE.DIRECT,
+      })),
+    });
+
+    // Ask what it is before asking what it holds: a unit in the field may
+    // still speak a protocol this site has already moved past.
+    sendPacket(device, buildIdentifyPacket())
+      .then(() => sendPacket(device, buildReadPacket()))
+      .catch((err) => set({ error: `기기 정보 읽기 실패: ${err.message}` }));
   },
 
   disconnect: async () => {
@@ -111,6 +139,8 @@ export const useFlixStore = create((set, get) => ({
     set({
       device: null,
       connected: false,
+      product: UNKNOWN_PRODUCT,
+      identity: null,
       keymap: EMPTY_KEYMAP,
       keyDetails: {},
       selectedKey: null,
