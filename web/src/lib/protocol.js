@@ -48,10 +48,10 @@ export const MAX_MACRO_STEPS = 16;
 export const STEPS_PER_CHUNK = 4;
 export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 
-// The chunked CMD_READ_KEY reply landed in protocol 4. Older firmware packs
-// four steps at a different offset and has no chunk byte, so reading it with
-// this parser would silently yield wrong timings.
-export const MIN_PROTOCOL_VERSION = 4;
+// Chunked CMD_READ_KEY replies landed in protocol 4 and chords in 5. Older
+// firmware packs steps at a different offset and has no chord flag, so
+// reading it with this parser would silently yield wrong timings.
+export const MIN_PROTOCOL_VERSION = 5;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
@@ -59,6 +59,10 @@ export const MAX_STEP_MS = 5000;
 
 // A step's mod byte carries flags alongside the modifier bits.
 const STEP_FLAG_MEDIA = 0x80;
+// Hold this step while the next one is pressed, rather than releasing first.
+// A run of these fires as one chord -- the only way two ordinary keys (not
+// just modifiers) can go down at the same instant.
+const STEP_FLAG_CHORD = 0x20;
 const STEP_MOD_MASK = 0x0f;
 // Only present in the compact keymap dump, never stored in a step.
 const DUMP_FLAG_MACRO = 0x40;
@@ -146,12 +150,24 @@ export function buildReadKeyPacket(keyIndex, chunk = 0) {
 
 // One step of a macro. hold is how long the key stays down, gap is the pause
 // after releasing it before the next step.
-export function buildWriteStepPacket({ keyIndex, stepIndex, mod = 0, code, isMedia = 0, holdMs, gapMs }) {
+export function buildWriteStepPacket({
+  keyIndex,
+  stepIndex,
+  mod = 0,
+  code,
+  isMedia = 0,
+  chord = 0,
+  holdMs,
+  gapMs,
+}) {
   const buf = new Uint8Array(PACKET_SIZE);
   buf[0] = CMD.WRITE_STEP;
   buf[1] = keyIndex & 0xff;
   buf[2] = stepIndex & 0xff;
-  buf[3] = (mod & STEP_MOD_MASK) | (isMedia ? STEP_FLAG_MEDIA : 0);
+  buf[3] =
+    (mod & STEP_MOD_MASK) |
+    (isMedia ? STEP_FLAG_MEDIA : 0) |
+    (chord ? STEP_FLAG_CHORD : 0);
   buf[4] = code & 0xff;
   buf[5] = holdMs & 0xff;
   buf[6] = (holdMs >> 8) & 0xff;
@@ -185,6 +201,7 @@ export function parseKeyDetailResponse(data) {
     steps.push({
       mod: modByte & STEP_MOD_MASK,
       isMedia: (modByte & STEP_FLAG_MEDIA) !== 0 ? 1 : 0,
+      chord: (modByte & STEP_FLAG_CHORD) !== 0 ? 1 : 0,
       code: bytes[idx + 1],
       holdMs: bytes[idx + 2] | (bytes[idx + 3] << 8),
       gapMs: bytes[idx + 4] | (bytes[idx + 5] << 8),
@@ -201,7 +218,34 @@ export function parseKeyDetailResponse(data) {
 }
 
 export function emptyStep() {
-  return { mod: 0, isMedia: 0, code: 0, holdMs: 0, gapMs: 0 };
+  return { mod: 0, isMedia: 0, chord: 0, code: 0, holdMs: 0, gapMs: 0 };
+}
+
+// Split steps into the groups that actually fire together, so callers can
+// show and time a chord as the single event it is rather than as N events.
+export function chordGroups(steps, stepCount) {
+  const groups = [];
+  let current = [];
+  for (let i = 0; i < Math.min(stepCount, steps.length); i++) {
+    current.push(i);
+    if (!steps[i].chord || i === stepCount - 1) {
+      groups.push(current);
+      current = [];
+    }
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+// How long a macro takes end to end. A chord counts once, and the final gap
+// never plays because nothing waits on it.
+export function macroDurationMs(steps, stepCount) {
+  const groups = chordGroups(steps, stepCount);
+  return groups.reduce((total, g, i) => {
+    const hold = steps[g[0]].holdMs;
+    const gap = i < groups.length - 1 ? steps[g[g.length - 1]].gapMs : 0;
+    return total + hold + gap;
+  }, 0);
 }
 
 // Fold an incoming chunk into whatever detail we already hold for that key.

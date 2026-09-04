@@ -249,15 +249,19 @@ export function textToSteps(text, { holdMs = 20, gapMs = 30, limit = 16 } = {}) 
 }
 
 // Best-effort inverse of textToSteps, for showing a saved macro back as text.
-// Steps that carry a modifier other than Shift, or a media code, have no
-// character form -- those come back as null so the caller can fall back to
-// the step list rather than printing a misleading word.
+// Steps that are chorded, carry a modifier other than Shift, or hold a media
+// code have no character form -- those come back as null so the caller falls
+// back to the step list rather than printing a misleading word.
 export function stepsToText(steps, stepCount) {
   const used = steps.slice(0, stepCount);
   if (!used.length) return null;
 
   let out = '';
   for (const step of used) {
+    // A chord is keys pressed together, which no sequence of characters
+    // describes -- "cv" would read as typing c then v, the opposite of what
+    // the device does.
+    if (step.chord) return null;
     if (step.isMedia || (step.mod & ~MOD_BITS.SHIFT) !== 0) return null;
     const wantShift = (step.mod & MOD_BITS.SHIFT) !== 0;
     const hit = Object.entries(TEXT_CHAR_TO_KEY).find(

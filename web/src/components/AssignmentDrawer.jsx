@@ -18,10 +18,12 @@ import {
 } from '../lib/keycodes';
 import { KEY_MODE } from '../lib/protocol';
 import WordTab from './WordTab';
+import TimingTab from './TimingTab';
 
 const TABS = [
   { id: 'custom', label: '직접 입력' },
   { id: 'word', label: '단어' },
+  { id: 'timing', label: '타이밍' },
   { id: 'letters', label: '문자' },
   { id: 'numbers', label: '숫자/기타' },
   { id: 'fkeys', label: 'F1-F12' },
@@ -271,6 +273,13 @@ export default function AssignmentDrawer() {
           {tab === 'custom' && <CustomCaptureTab onCapture={assignKey} />}
           {tab === 'word' && (
             <WordTab
+              keyIndex={selectedKey}
+              detail={detail}
+              onSave={(steps) => programMacro(selectedKey, steps)}
+            />
+          )}
+          {tab === 'timing' && (
+            <TimingTab
               keyIndex={selectedKey}
               detail={detail}
               onSave={(steps) => programMacro(selectedKey, steps)}
