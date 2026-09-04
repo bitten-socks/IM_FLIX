@@ -14,10 +14,14 @@ import {
   DOM_CODE_TO_HID,
   isModifierDomCode,
   describeKey,
+  stepsToText,
 } from '../lib/keycodes';
+import { KEY_MODE } from '../lib/protocol';
+import WordTab from './WordTab';
 
 const TABS = [
   { id: 'custom', label: '직접 입력' },
+  { id: 'word', label: '단어' },
   { id: 'letters', label: '문자' },
   { id: 'numbers', label: '숫자/기타' },
   { id: 'fkeys', label: 'F1-F12' },
@@ -25,14 +29,44 @@ const TABS = [
   { id: 'macro', label: '단축키' },
 ];
 
+// Combinations the browser or Windows claims before the page ever sees them.
+// Pressing Ctrl+W here would close the tab mid-setup, so these are offered as
+// buttons instead of being captured. preventDefault() cannot save us: the
+// browser acts on them at a level a page has no say over.
+const RESERVED_COMBOS = [
+  { label: 'Ctrl + W', mod: MOD_BITS.CTRL, code: 0x1a, why: '탭 닫기' },
+  { label: 'Ctrl + T', mod: MOD_BITS.CTRL, code: 0x17, why: '새 탭' },
+  { label: 'Ctrl + N', mod: MOD_BITS.CTRL, code: 0x11, why: '새 창' },
+  { label: 'Alt + F4', mod: MOD_BITS.ALT, code: 0x3d, why: '창 종료' },
+];
+
+function heldModifierLabels(e) {
+  return [
+    e.ctrlKey && 'Ctrl',
+    e.shiftKey && 'Shift',
+    e.altKey && 'Alt',
+    e.metaKey && 'Win',
+  ].filter(Boolean);
+}
+
 function CustomCaptureTab({ onCapture }) {
   const [listening, setListening] = useState(false);
+  const [held, setHeld] = useState([]);
   const [lastCombo, setLastCombo] = useState(null);
 
   useEffect(() => {
-    if (!listening) return undefined;
+    if (!listening) {
+      setHeld([]);
+      return undefined;
+    }
+
+    // Modifiers are shown as they are held so the panel visibly responds to a
+    // bare Ctrl. Without this, holding a modifier looks like a dead panel --
+    // it produces no assignment on its own and used to give no feedback.
+    const track = (e) => setHeld(heldModifierLabels(e));
 
     const handleKeyDown = (e) => {
+      track(e);
       if (isModifierDomCode(e.code)) return;
       const hidCode = DOM_CODE_TO_HID[e.code];
       if (!hidCode) return;
@@ -47,30 +81,95 @@ function CustomCaptureTab({ onCapture }) {
       setLastCombo(combo);
       onCapture(combo);
       setListening(false);
+      setHeld([]);
     };
 
     window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', track, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', track, true);
+    };
   }, [listening, onCapture]);
 
   return (
-    <div className="col-span-4 flex flex-col items-center gap-3 py-6">
+    <div className="col-span-4 flex flex-col gap-3 py-2">
       <button
-        onClick={() => setListening(true)}
-        className={`w-full rounded-xl border-2 border-dashed py-8 text-sm font-semibold transition ${
+        onClick={() => setListening((v) => !v)}
+        className={`w-full rounded-xl border-2 border-dashed py-6 transition ${
           listening
-            ? 'animate-pulse border-cyan-400 text-cyan-300'
-            : 'border-white/15 text-white/60 hover:border-white/30'
+            ? 'border-cyan-400 bg-cyan-500/5'
+            : 'border-white/15 hover:border-white/30'
         }`}
       >
-        {listening ? '⌨️ 키를 누르세요...' : '⌨️ 여기를 클릭하고 원하는 키를 누르세요'}
+        <span
+          className={`block text-sm font-semibold ${
+            listening ? 'text-cyan-300' : 'text-white/60'
+          }`}
+        >
+          {listening ? '기다리는 중 — 지금 누르세요' : '① 여기를 눌러 시작'}
+        </span>
+        <span className="mt-1 block text-[11px] text-white/35">
+          {listening
+            ? '내 키보드에서 누른 조합이 이 키에 저장됩니다'
+            : '누른 뒤 ② 내 키보드로 원하는 조합을 누릅니다'}
+        </span>
+
+        {listening && (
+          <span className="mt-3 flex min-h-[26px] items-center justify-center gap-1">
+            {held.length === 0 ? (
+              <span className="text-[11px] text-white/25">아직 눌린 키 없음</span>
+            ) : (
+              held.map((m) => (
+                <span
+                  key={m}
+                  className="rounded bg-cyan-500/20 px-2 py-0.5 text-[11px] font-semibold text-cyan-300"
+                >
+                  {m}
+                </span>
+              ))
+            )}
+          </span>
+        )}
       </button>
+
       {lastCombo && (
-        <p className="text-xs text-white/40">방금 적용됨: {describeKey(lastCombo)}</p>
+        <p className="text-center text-xs text-white/40">
+          방금 적용됨: <b className="text-white/70">{describeKey(lastCombo)}</b>
+        </p>
       )}
-      <p className="max-w-[16rem] text-center text-[11px] leading-relaxed text-white/30">
-        Ctrl·Shift·Alt·Win을 누른 채로 원하는 키를 누르면 그 조합 그대로 매핑됩니다.
-      </p>
+
+      <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+        <p className="text-[11px] leading-relaxed text-white/45">
+          <b className="text-white/70">예)</b> Ctrl을 누른 채로 C를 누르면 이 키가{' '}
+          <b className="text-white/70">Ctrl + C</b>가 됩니다.
+        </p>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-white/30">
+          Ctrl·Shift·Alt·Win만 누르면 저장되지 않습니다. 함께 누를 글자까지 눌러야
+          완성됩니다.
+        </p>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-[11px] text-white/40">
+          아래 조합은 브라우저가 먼저 가로채서 직접 누를 수 없습니다. 눌러서 지정하세요.
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {RESERVED_COMBOS.map((c) => (
+            <button
+              key={c.label}
+              onClick={() => {
+                setLastCombo({ mod: c.mod, code: c.code, isMedia: 0 });
+                onCapture({ mod: c.mod, code: c.code, isMedia: 0 });
+              }}
+              className="rounded-lg border border-white/10 px-2 py-1.5 text-left transition hover:border-cyan-400/50 hover:bg-cyan-500/5"
+            >
+              <span className="block text-[11px] font-semibold text-white/80">{c.label}</span>
+              <span className="block text-[10px] text-white/30">{c.why}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -78,14 +177,32 @@ function CustomCaptureTab({ onCapture }) {
 export default function AssignmentDrawer() {
   const [tab, setTab] = useState('custom');
   const [activeMods, setActiveMods] = useState(0);
-  const { selectedKey, keymap, assignKey, closeAssignment } = useFlixStore();
+  const { selectedKey, keymap, keyDetails, assignKey, closeAssignment, loadKeyDetail, programMacro } =
+    useFlixStore();
   const open = selectedKey !== null;
+  const detail = selectedKey === null ? null : keyDetails[selectedKey];
+
+  // The compact keymap dump only carries step 0, so the word tab needs the
+  // full per-key detail pulled on demand.
+  useEffect(() => {
+    if (selectedKey !== null) loadKeyDetail(selectedKey);
+  }, [selectedKey, loadKeyDetail]);
 
   const toggleMod = (bit) => setActiveMods((m) => (m & bit ? m & ~bit : m | bit));
   const pickBase = (code) => assignKey({ mod: activeMods, code, isMedia: 0 });
   const pickMedia = (code) => assignKey({ mod: 0, code, isMedia: 1 });
   const pickMacro = (p) => assignKey({ mod: p.mod, code: p.code, isMedia: p.isMedia });
-  const pickCustom = (combo) => assignKey(combo);
+
+  // A macro key's real assignment is the whole sequence, which the compact
+  // dump cannot express -- show the word instead of just its first letter.
+  const currentLabel = (() => {
+    if (detail?.mode === KEY_MODE.MACRO) {
+      const word = stepsToText(detail.steps, detail.stepCount);
+      if (word) return `"${word}"`;
+      return `${detail.stepCount}단계 매크로`;
+    }
+    return describeKey(keymap[selectedKey] ?? {});
+  })();
 
   return (
     <>
@@ -106,9 +223,7 @@ export default function AssignmentDrawer() {
             <p className="text-[10px] uppercase tracking-wider text-white/40">
               K{selectedKey === null ? '-' : selectedKey + 1}
             </p>
-            <p className="text-sm font-semibold text-white">
-              현재: {describeKey(keymap[selectedKey] ?? {})}
-            </p>
+            <p className="text-sm font-semibold text-white">현재: {currentLabel}</p>
           </div>
           <button
             onClick={closeAssignment}
@@ -153,7 +268,14 @@ export default function AssignmentDrawer() {
         )}
 
         <div className="grid flex-1 auto-rows-min grid-cols-4 gap-2 overflow-y-auto p-5">
-          {tab === 'custom' && <CustomCaptureTab onCapture={pickCustom} />}
+          {tab === 'custom' && <CustomCaptureTab onCapture={assignKey} />}
+          {tab === 'word' && (
+            <WordTab
+              keyIndex={selectedKey}
+              detail={detail}
+              onSave={(steps) => programMacro(selectedKey, steps)}
+            />
+          )}
           {tab === 'letters' &&
             LETTER_KEYS.map((k) => (
               <button

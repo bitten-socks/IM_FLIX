@@ -20,8 +20,11 @@ import {
   parseIdentityResponse,
   buildIdentifyPacket,
   parseKeyDetailResponse,
+  mergeKeyDetailChunk,
   isPingAck,
   KEY_MODE,
+  KEY_DETAIL_CHUNKS,
+  MIN_PROTOCOL_VERSION,
 } from '../lib/protocol';
 import { productForId, UNKNOWN_PRODUCT } from '../lib/products';
 
@@ -84,6 +87,13 @@ export const useFlixStore = create((set, get) => ({
       const identity = parseIdentityResponse(bytes);
       if (identity) {
         set({ identity });
+        if (identity.protocolVersion < MIN_PROTOCOL_VERSION) {
+          set({
+            error:
+              '이 기기의 펌웨어가 오래되어 단어·타이밍 기능을 쓸 수 없습니다. ' +
+              '펌웨어를 다시 설치해 주세요.',
+          });
+        }
         return;
       }
       const rowCount = Math.ceil(get().product.keyCount / get().product.matrixColumns) || 2;
@@ -95,7 +105,10 @@ export const useFlixStore = create((set, get) => ({
       const detail = parseKeyDetailResponse(bytes);
       if (detail) {
         set((s) => ({
-          keyDetails: { ...s.keyDetails, [detail.keyIndex]: detail },
+          keyDetails: {
+            ...s.keyDetails,
+            [detail.keyIndex]: mergeKeyDetailChunk(s.keyDetails[detail.keyIndex], detail),
+          },
           lastSync: Date.now(),
         }));
         return;
@@ -199,11 +212,15 @@ export const useFlixStore = create((set, get) => ({
 
   // Pull the full detail (mode + every macro step) for one key. The compact
   // keymap dump only carries step 0, so the macro editor needs this.
+  // A key's 16 steps span several reports, so ask for each chunk in turn.
+  // The replies arrive asynchronously and are merged by the report handler.
   loadKeyDetail: async (keyIndex) => {
     const { device } = get();
     if (!device) return;
     try {
-      await sendPacket(device, buildReadKeyPacket(keyIndex));
+      for (let chunk = 0; chunk < KEY_DETAIL_CHUNKS; chunk++) {
+        await sendPacket(device, buildReadKeyPacket(keyIndex, chunk));
+      }
     } catch (err) {
       set({ error: `키 상세 읽기 실패: ${err.message}` });
     }
@@ -230,6 +247,55 @@ export const useFlixStore = create((set, get) => ({
       await sendPacket(device, buildWriteStepPacket(step));
     } catch (err) {
       set({ error: `매크로 단계 저장 실패: ${err.message}` });
+    }
+  },
+
+  // Program a key's whole macro in one go: set the mode and step count
+  // first, then write each step. Order matters -- the firmware clamps
+  // step_count, so raising it before writing means a half-written sequence
+  // can never be played with stale steps past the new end.
+  programMacro: async (keyIndex, steps) => {
+    const { device } = get();
+    if (!device || !steps.length) return;
+    try {
+      await sendPacket(
+        device,
+        buildWriteModePacket({ keyIndex, mode: KEY_MODE.MACRO, stepCount: steps.length }),
+      );
+      for (let i = 0; i < steps.length; i++) {
+        await sendPacket(device, buildWriteStepPacket({ keyIndex, stepIndex: i, ...steps[i] }));
+      }
+      set({ lastSync: Date.now(), error: null });
+      await get().refreshKeymap();
+    } catch (err) {
+      set({ error: `매크로 저장 실패: ${err.message}` });
+    }
+  },
+
+  // Re-time an existing macro without touching which keys it presses.
+  retimeMacro: async (keyIndex, holdMs, gapMs) => {
+    const { device, keyDetails } = get();
+    const detail = keyDetails[keyIndex];
+    if (!device || !detail) return;
+    try {
+      for (let i = 0; i < detail.stepCount; i++) {
+        const step = detail.steps[i];
+        await sendPacket(
+          device,
+          buildWriteStepPacket({
+            keyIndex,
+            stepIndex: i,
+            mod: step.mod,
+            code: step.code,
+            isMedia: step.isMedia,
+            holdMs,
+            gapMs,
+          }),
+        );
+      }
+      set({ lastSync: Date.now(), error: null });
+    } catch (err) {
+      set({ error: `타이밍 저장 실패: ${err.message}` });
     }
   },
 

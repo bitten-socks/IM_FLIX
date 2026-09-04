@@ -38,8 +38,20 @@ export const KEY_MODE = {
 };
 
 // Steps a key may emit in macro mode. Must match MAX_MACRO_STEPS in the
-// firmware.
-export const MAX_MACRO_STEPS = 4;
+// firmware. Sixteen is what makes a short word practical -- one step per
+// character.
+export const MAX_MACRO_STEPS = 16;
+
+// Sixteen steps are 96 bytes, far past what one 32-byte report holds, so the
+// firmware answers CMD_READ_KEY in chunks of four steps and the client
+// stitches them together. Must match FLIX_STEPS_PER_CHUNK in the firmware.
+export const STEPS_PER_CHUNK = 4;
+export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
+
+// The chunked CMD_READ_KEY reply landed in protocol 4. Older firmware packs
+// four steps at a different offset and has no chunk byte, so reading it with
+// this parser would silently yield wrong timings.
+export const MIN_PROTOCOL_VERSION = 4;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
@@ -124,10 +136,11 @@ export function parseKeymapResponse(data, keyCount) {
   return keys;
 }
 
-export function buildReadKeyPacket(keyIndex) {
+export function buildReadKeyPacket(keyIndex, chunk = 0) {
   const buf = new Uint8Array(PACKET_SIZE);
   buf[0] = CMD.READ_KEY;
   buf[1] = keyIndex & 0xff;
+  buf[2] = chunk & 0xff;
   return buf;
 }
 
@@ -156,14 +169,18 @@ export function buildWriteModePacket({ keyIndex, mode, stepCount }) {
   return buf;
 }
 
-// Full detail for a single key, including every macro step.
+// One chunk of a key's detail: mode and step count, plus STEPS_PER_CHUNK
+// steps starting at chunk * STEPS_PER_CHUNK. The header repeats in every
+// chunk, so a reply that arrives on its own -- a write echo -- is still
+// readable. Callers merge chunks with mergeKeyDetailChunk().
 export function parseKeyDetailResponse(data) {
   const bytes = toUint8Array(data);
   if (bytes[0] !== CMD.RESPONSE_OK || bytes[1] !== KEY_DETAIL_SENTINEL) return null;
 
+  const chunk = bytes[5];
   const steps = [];
-  for (let s = 0; s < MAX_MACRO_STEPS; s++) {
-    const idx = 5 + s * 6;
+  for (let s = 0; s < STEPS_PER_CHUNK; s++) {
+    const idx = 6 + s * 6;
     const modByte = bytes[idx];
     steps.push({
       mod: modByte & STEP_MOD_MASK,
@@ -178,6 +195,32 @@ export function parseKeyDetailResponse(data) {
     keyIndex: bytes[2],
     mode: bytes[3],
     stepCount: bytes[4],
+    chunk,
+    steps,
+  };
+}
+
+export function emptyStep() {
+  return { mod: 0, isMedia: 0, code: 0, holdMs: 0, gapMs: 0 };
+}
+
+// Fold an incoming chunk into whatever detail we already hold for that key.
+// Steps outside the chunk are left as they were, so the four replies to a
+// full read accumulate instead of overwriting each other.
+export function mergeKeyDetailChunk(previous, incoming) {
+  const steps = previous?.steps?.length === MAX_MACRO_STEPS
+    ? [...previous.steps]
+    : Array.from({ length: MAX_MACRO_STEPS }, emptyStep);
+
+  const first = incoming.chunk * STEPS_PER_CHUNK;
+  incoming.steps.forEach((step, i) => {
+    if (first + i < MAX_MACRO_STEPS) steps[first + i] = step;
+  });
+
+  return {
+    keyIndex: incoming.keyIndex,
+    mode: incoming.mode,
+    stepCount: incoming.stepCount,
     steps,
   };
 }

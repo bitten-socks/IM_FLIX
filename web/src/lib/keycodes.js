@@ -1,6 +1,6 @@
-// Keycode tables mirror MCU/code.py's build_kmk_key() exactly.
-// Any code added here must have a matching branch in that function,
-// or the MCU will silently fall back to KC.NO / KC.A.
+// HID usage ids, sent to the firmware as-is. QMK/users/flix/flix.c maps a
+// step's {mod, code} straight onto a QMK keycode, so a value added here needs
+// no firmware counterpart -- but it must be a real HID usage id.
 
 export const MOD_BITS = {
   CTRL: 0x01,
@@ -179,4 +179,92 @@ export function describeKey({ mod = 0, code = 0, isMedia = 0 }) {
   if (isMedia) return findMediaLabel(code);
   const mods = MOD_LABELS.filter(([bit]) => mod & bit).map(([, label]) => label);
   return [...mods, findBaseKeyLabel(code)].join('+');
+}
+
+// --- Typing a word -------------------------------------------------------
+//
+// A word is emitted one character per macro step. What a given keystroke
+// produces is decided by the PC, not by us: these are US-layout positions,
+// and the host must be in English input mode. Korean cannot work this way at
+// all -- the characters are composed by the IME from jamo keystrokes, so the
+// same steps would type "qmfhr" rather than a Korean word. textToSteps()
+// therefore reports unsupported characters instead of emitting something
+// that would silently type gibberish.
+
+const SHIFTED_SYMBOLS = {
+  '!': 0x1e, '@': 0x1f, '#': 0x20, '$': 0x21, '%': 0x22,
+  '^': 0x23, '&': 0x24, '*': 0x25, '(': 0x26, ')': 0x27,
+  _: 0x2d, '+': 0x2e, '{': 0x2f, '}': 0x30, '|': 0x31,
+  ':': 0x33, '"': 0x34, '~': 0x35, '<': 0x36, '>': 0x37, '?': 0x38,
+};
+
+// char -> { code, shift } for everything a word may contain.
+export const TEXT_CHAR_TO_KEY = (() => {
+  const map = {};
+  LETTER_KEYS.forEach(({ code, label }) => {
+    map[label.toLowerCase()] = { code, shift: false };
+    map[label] = { code, shift: true };
+  });
+  NUMBER_KEYS.forEach(({ code, label }) => {
+    map[label] = { code, shift: false };
+  });
+  PUNCT_KEYS.forEach(({ code, label }) => {
+    map[label] = { code, shift: false };
+  });
+  map[' '] = { code: 0x2c, shift: false };
+  Object.entries(SHIFTED_SYMBOLS).forEach(([ch, code]) => {
+    map[ch] = { code, shift: true };
+  });
+  return map;
+})();
+
+export function isTypableChar(ch) {
+  return Object.prototype.hasOwnProperty.call(TEXT_CHAR_TO_KEY, ch);
+}
+
+// Turn text into macro steps, one per character. Returns the steps it could
+// build plus the characters it had to drop, so the UI can say which ones and
+// why rather than quietly typing something else.
+export function textToSteps(text, { holdMs = 20, gapMs = 30, limit = 16 } = {}) {
+  const steps = [];
+  const rejected = [];
+
+  for (const ch of text) {
+    if (steps.length >= limit) break;
+    const entry = TEXT_CHAR_TO_KEY[ch];
+    if (!entry) {
+      if (!rejected.includes(ch)) rejected.push(ch);
+      continue;
+    }
+    steps.push({
+      mod: entry.shift ? MOD_BITS.SHIFT : 0,
+      code: entry.code,
+      isMedia: 0,
+      holdMs,
+      gapMs,
+    });
+  }
+
+  return { steps, rejected, truncated: [...text].length > limit };
+}
+
+// Best-effort inverse of textToSteps, for showing a saved macro back as text.
+// Steps that carry a modifier other than Shift, or a media code, have no
+// character form -- those come back as null so the caller can fall back to
+// the step list rather than printing a misleading word.
+export function stepsToText(steps, stepCount) {
+  const used = steps.slice(0, stepCount);
+  if (!used.length) return null;
+
+  let out = '';
+  for (const step of used) {
+    if (step.isMedia || (step.mod & ~MOD_BITS.SHIFT) !== 0) return null;
+    const wantShift = (step.mod & MOD_BITS.SHIFT) !== 0;
+    const hit = Object.entries(TEXT_CHAR_TO_KEY).find(
+      ([, v]) => v.code === step.code && v.shift === wantShift,
+    );
+    if (!hit) return null;
+    out += hit[0];
+  }
+  return out;
 }
