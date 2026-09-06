@@ -14,8 +14,8 @@ export const VENDOR_ID = 0xfeed;
 // `columns` wide -- usable immediately, swapped for the real render later
 // without touching any component.
 //
-// All three renders share one orthographic camera, one 216x184 frame and one
-// crop, so a key is 46px of pitch in every file. That is what makes the line
+// All three renders share one orthographic camera, one 1296x1104 frame and
+// one crop, so a key is 278px of pitch in every file. That is what makes the line
 // look right next to itself: VIBE 4 is drawn smaller than VIBE 9 because it
 // *is* smaller, rather than every product being blown up to fill its frame.
 // Re-export the set together, or the sizes stop meaning anything.
@@ -27,10 +27,10 @@ const PRODUCTS = {
     columns: 2,
     artwork: '/vibe4.png',
     hotspots: [
-      { left: 24.54, top: 27.72, width: 16.2, height: 19.02 },
-      { left: 45.83, top: 27.72, width: 16.2, height: 19.02 },
-      { left: 24.54, top: 53.26, width: 16.2, height: 19.02 },
-      { left: 45.83, top: 53.26, width: 16.2, height: 19.02 },
+      { left: 24.23, top: 27.63, width: 16.74, height: 19.57 },
+      { left: 45.68, top: 27.63, width: 16.74, height: 19.57 },
+      { left: 24.23, top: 52.81, width: 16.74, height: 19.57 },
+      { left: 45.68, top: 52.81, width: 16.74, height: 19.57 },
     ],
     pins: ['GP0', 'GP1', 'GP2', 'GP3'],
     matrixColumns: 2,
@@ -42,12 +42,12 @@ const PRODUCTS = {
     columns: 3,
     artwork: '/vibe6.png',
     hotspots: [
-      { left: 13.43, top: 27.72, width: 16.2, height: 19.02 },
-      { left: 34.72, top: 27.72, width: 16.67, height: 19.02 },
-      { left: 56.48, top: 27.72, width: 16.2, height: 19.02 },
-      { left: 13.43, top: 53.26, width: 16.2, height: 19.02 },
-      { left: 34.72, top: 53.26, width: 16.67, height: 19.02 },
-      { left: 56.48, top: 53.26, width: 16.2, height: 19.02 },
+      { left: 13.27, top: 27.63, width: 16.74, height: 19.57 },
+      { left: 34.72, top: 27.63, width: 16.67, height: 19.57 },
+      { left: 56.10, top: 27.63, width: 16.74, height: 19.57 },
+      { left: 13.27, top: 52.81, width: 16.74, height: 19.57 },
+      { left: 34.72, top: 52.81, width: 16.67, height: 19.57 },
+      { left: 56.10, top: 52.81, width: 16.74, height: 19.57 },
     ],
     // Mirrors matrix_pins.direct in the keyboard's keyboard.json. Only the
     // hardware diagnostic panel needs this.
@@ -61,15 +61,15 @@ const PRODUCTS = {
     columns: 3,
     artwork: '/vibe9.png',
     hotspots: [
-      { left: 13.43, top: 15.22, width: 16.2, height: 19.02 },
-      { left: 34.72, top: 15.22, width: 16.67, height: 19.02 },
-      { left: 56.48, top: 15.22, width: 16.2, height: 19.02 },
-      { left: 13.43, top: 40.22, width: 16.2, height: 19.57 },
+      { left: 13.27, top: 15.04, width: 16.74, height: 19.66 },
+      { left: 34.72, top: 15.04, width: 16.67, height: 19.66 },
+      { left: 56.10, top: 15.04, width: 16.74, height: 19.66 },
+      { left: 13.27, top: 40.22, width: 16.74, height: 19.57 },
       { left: 34.72, top: 40.22, width: 16.67, height: 19.57 },
-      { left: 56.48, top: 40.22, width: 16.2, height: 19.57 },
-      { left: 13.43, top: 65.76, width: 16.2, height: 19.02 },
-      { left: 34.72, top: 65.76, width: 16.67, height: 19.02 },
-      { left: 56.48, top: 65.76, width: 16.2, height: 19.02 },
+      { left: 56.10, top: 40.22, width: 16.74, height: 19.57 },
+      { left: 13.27, top: 65.31, width: 16.74, height: 19.66 },
+      { left: 34.72, top: 65.31, width: 16.67, height: 19.66 },
+      { left: 56.10, top: 65.31, width: 16.74, height: 19.66 },
     ],
     pins: ['GP0', 'GP1', 'GP2', 'GP3', 'GP4', 'GP5', 'GP6', 'GP7', 'GP8'],
     matrixColumns: 3,
