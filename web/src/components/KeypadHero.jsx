@@ -7,16 +7,19 @@ import { KEY_MODE } from '../lib/protocol';
 // plain grid, so a new model is usable the day its firmware works rather than
 // waiting on artwork.
 
+// The case renders are near-black, so anything drawn over a keycap has to
+// bring its own contrast. A dark chip with white text -- fine on the page
+// background -- disappears against the product itself.
 function KeyLabel({ entry }) {
   const isMacro = entry?.mode === KEY_MODE.MACRO;
   return (
     <>
       {isMacro && (
-        <span className="rounded bg-amber-500/90 px-1 py-0.5 text-[9px] font-bold text-slate-950">
+        <span className="rounded bg-amber-400 px-1 py-0.5 text-[9px] font-bold text-slate-950">
           MACRO
         </span>
       )}
-      <span className="rounded bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold text-white">
+      <span className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-900 shadow">
         {describeKey(entry ?? {})}
       </span>
     </>
@@ -28,10 +31,12 @@ export default function KeypadHero() {
 
   const keyIndexes = Array.from({ length: product.keyCount }, (_, i) => i);
 
+  // An unselected key needs a visible outline of its own: on a black case a
+  // transparent ring left nothing to aim at.
   const selectionClasses = (index) =>
     selectedKey === index
-      ? 'bg-cyan-400/20 ring-4 ring-cyan-400'
-      : 'ring-2 ring-transparent hover:bg-cyan-400/10 hover:ring-cyan-400/50';
+      ? 'bg-cyan-400/25 ring-[3px] ring-cyan-300'
+      : 'ring-1 ring-white/30 hover:bg-cyan-400/15 hover:ring-cyan-300/80';
 
   if (product.artwork && product.hotspots) {
     return (
@@ -59,7 +64,7 @@ export default function KeypadHero() {
                 }}
                 className={`absolute flex flex-col items-center justify-center gap-1 rounded-md transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
               >
-                <span className="rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white/70">
+                <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   K{index + 1}
                 </span>
                 <KeyLabel entry={keymap[index]} />
