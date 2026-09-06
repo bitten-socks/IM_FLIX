@@ -17,17 +17,17 @@ export default function App() {
       <ErrorBanner />
 
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
-        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#15171c] p-10">
+        <div className="relative overflow-hidden rounded-3xl bg-white p-10">
           <div className="mb-6 text-center">
-            <p className="text-xs uppercase tracking-wider text-white/30">MY DEVICE</p>
-            <h1 className="text-lg font-bold text-white">{connected ? product.name : "FLIX"}</h1>
+            <p className="text-xs uppercase tracking-wider text-slate-400">MY DEVICE</p>
+            <h1 className="text-lg font-bold text-slate-900">{connected ? product.name : 'FLIX'}</h1>
           </div>
 
           <KeypadHero />
 
           {!connected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0b0c0f]/80 backdrop-blur-sm">
-              <p className="text-sm text-white/60">FLIX 기기가 연결되어 있지 않습니다</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-white/85 backdrop-blur-sm">
+              <p className="text-sm text-slate-500">FLIX 기기가 연결되어 있지 않습니다</p>
               <button
                 onClick={connect}
                 disabled={!supported || connecting}

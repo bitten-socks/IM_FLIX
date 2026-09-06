@@ -87,9 +87,9 @@ export default function KeypadHero() {
             key={index}
             disabled={!connected}
             onClick={() => setSelectedKey(index)}
-            className={`flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
+            className={`flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
           >
-            <span className="text-[10px] font-medium text-white/40">K{index + 1}</span>
+            <span className="text-[10px] font-medium text-white/50">K{index + 1}</span>
             <KeyLabel entry={keymap[index]} />
           </button>
         ))}
