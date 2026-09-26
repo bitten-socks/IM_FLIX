@@ -48,6 +48,10 @@ export const useFlixStore = create((set, get) => ({
   lastSync: null,
   lastPing: null,
   matrixState: null,
+  // True once a connect attempt ended without a device. Usually a cable that
+  // only carries power: the device never enumerates, so the browser's picker
+  // has nothing to show and the user is left with a product that looks dead.
+  noDevicePicked: false,
   error: null,
   _stopListening: null,
 
@@ -56,7 +60,7 @@ export const useFlixStore = create((set, get) => ({
     try {
       const device = await requestFlixDevice();
       if (!device) {
-        set({ connecting: false });
+        set({ connecting: false, noDevicePicked: true });
         return;
       }
       get()._attachDevice(device);
@@ -121,6 +125,7 @@ export const useFlixStore = create((set, get) => ({
       device,
       product,
       connected: true,
+      noDevicePicked: false,
       connecting: false,
       _stopListening: stop,
       error: null,
