@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import FlixLogo from '../components/FlixLogo';
 import { ROUTES, navigate } from '../lib/router';
 
-// The intro. The wordmark settles, the X turns out and back, then it rises a
-// little as the two ways in appear beneath it -- no click needed to get past
-// the logo, since a logo that must be clicked stops anyone who doesn't
-// realise it.
+// The intro. The wordmark settles, the X turns out and back, then it rises as
+// the two ways in appear beneath it -- no click needed to get past the logo,
+// since a logo that must be clicked stops anyone who doesn't realise it.
 //
 // Every duration lives here so the pace can be tuned in one place. The feel
 // is meant to be unhurried rather than quick: slow easing, no bounce, and the
@@ -66,6 +65,12 @@ export default function LandingView() {
     if (!showButtons) setSettled(true);
   };
 
+  // Once the scripted turn is over the X goes back to answering the cursor,
+  // the way it does in the top bar. Handing over means dropping the inline
+  // angle entirely -- an inline transform would outrank the hover class and
+  // pin the letter upright.
+  const introOver = showButtons;
+
   return (
     <div onClick={skip} className="flex min-h-screen flex-col items-center justify-center px-6">
       {/* Two layers: the outer one carries the rise, the inner one the fade,
@@ -75,39 +80,35 @@ export default function LandingView() {
       <div
         style={{ transitionDuration: `${TIMING.lift}ms` }}
         className={`transition-transform ease-out ${
-          showButtons ? 'translate-y-0' : 'translate-y-6'
+          showButtons ? 'translate-y-0' : 'translate-y-12'
         }`}
       >
         <div
           style={{ transitionDuration: `${TIMING.logoIn}ms` }}
-          className={`transition-all ease-out ${
+          className={`group cursor-pointer transition-all ease-out ${
             logoShown ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-2 opacity-0 blur-[2px]'
           }`}
         >
-          <FlixLogo size="xl" xAngle={xAngle} />
+          <FlixLogo
+            size="xl"
+            xAngle={introOver ? null : xAngle}
+            interactive={introOver}
+          />
         </div>
       </div>
 
       {/* One surface split down the middle rather than two buttons: the whole
-          half is the target, so it reads as choosing a side. */}
+          half is the target, so it reads as choosing a side. No outer frame --
+          the fill that follows the cursor is what marks the edges. */}
       <div
         style={{ transitionDuration: `${TIMING.buttonsIn}ms` }}
-        className={`mt-12 w-full max-w-xl transition-all ease-out ${
+        className={`mt-12 w-full max-w-3xl transition-all ease-out ${
           showButtons ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
         }`}
       >
-        <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-white/10 divide-x divide-white/10">
-          <Half
-            label="키 맵핑"
-            hint="내 기기 설정하기"
-            accent
-            onClick={() => navigate(ROUTES.MAP)}
-          />
-          <Half
-            label="둘러보기"
-            hint="제품과 가이드"
-            onClick={() => navigate(ROUTES.BROWSE)}
-          />
+        <div className="grid grid-cols-2 divide-x divide-white/10 overflow-hidden rounded-2xl">
+          <Half label="키 맵핑" hint="내 기기 설정하기" accent onClick={() => navigate(ROUTES.MAP)} />
+          <Half label="둘러보기" hint="제품과 가이드" onClick={() => navigate(ROUTES.BROWSE)} />
         </div>
       </div>
     </div>
@@ -118,18 +119,20 @@ function Half({ label, hint, accent = false, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 px-6 py-10 transition-colors duration-300 ${
-        accent ? 'hover:bg-cyan-500/10' : 'hover:bg-white/[0.06]'
+      className={`group flex flex-col items-center justify-center gap-2 px-8 py-16 transition-colors duration-300 ${
+        accent ? 'hover:bg-cyan-500/[0.07]' : 'hover:bg-white/[0.05]'
       }`}
     >
+      {/* Scaled rather than resized: changing font-size would reflow the row
+          and nudge its neighbour, while a transform stays in its own layer. */}
       <span
-        className={`text-base font-semibold transition-colors duration-300 ${
-          accent ? 'text-cyan-300 group-hover:text-cyan-200' : 'text-white/80 group-hover:text-white'
+        className={`inline-block text-base font-semibold transition-transform duration-300 ease-out group-hover:scale-125 ${
+          accent ? 'text-cyan-300' : 'text-white/85'
         }`}
       >
         {label}
       </span>
-      <span className="text-[11px] text-white/30 transition-colors duration-300 group-hover:text-white/50">
+      <span className="inline-block text-[11px] text-white/30 transition-transform duration-300 ease-out group-hover:scale-110">
         {hint}
       </span>
     </button>
