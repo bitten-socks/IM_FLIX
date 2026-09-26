@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MAX_MACRO_STEPS, MIN_STEP_MS, MAX_STEP_MS, KEY_MODE, chordGroups } from '../lib/protocol';
 import { DOM_CODE_TO_HID, isModifierDomCode, MOD_BITS, describeKey } from '../lib/keycodes';
 import MacroPreview from './MacroPreview';
+import { useCaptureGuard } from './AssignmentDrawer';
 
 // Step-by-step macro editor: each press gets its own hold and gap, and any
 // step can be marked as firing together with the next one.
@@ -23,6 +24,7 @@ const PRESETS = [
 export default function TimingTab({ keyIndex, detail, onSave }) {
   const [steps, setSteps] = useState([]);
   const [listening, setListening] = useState(false);
+  const addRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -89,6 +91,8 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [listening]);
+
+  useCaptureGuard(listening, () => setListening(false), addRef, keyIndex);
 
   const update = (index, patch) => {
     setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -225,6 +229,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       )}
 
       <button
+        ref={addRef}
         onClick={() => setListening((v) => !v)}
         disabled={steps.length >= MAX_MACRO_STEPS}
         className={`rounded-xl border-2 border-dashed py-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-30 ${

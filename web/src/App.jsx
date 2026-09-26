@@ -1,53 +1,35 @@
-import BrowserGuard from './components/BrowserGuard';
+import { useEffect } from 'react';
 import TopBar from './components/TopBar';
-import ErrorBanner from './components/ErrorBanner';
-import KeypadHero from './components/KeypadHero';
-import AssignmentDrawer from './components/AssignmentDrawer';
-import StatusBar from './components/StatusBar';
-import DiagnosticPanel from './components/DiagnosticPanel';
+import LandingView from './views/LandingView';
+import MapView from './views/MapView';
+import BrowseView from './views/BrowseView';
+import { ROUTES, useRoute } from './lib/router';
 import { useFlixStore } from './store/useFlixStore';
 
 export default function App() {
-  const { connected, connect, connecting, supported, product } = useFlixStore();
+  const route = useRoute();
+  const supported = useFlixStore((s) => s.supported);
+  const tryReconnect = useFlixStore((s) => s.tryReconnect);
+
+  // Reattach here rather than in the top bar, which the intro hides. Run from
+  // the app shell it happens while the intro is still playing, so arriving at
+  // the mapping screen finds the device already connected instead of showing
+  // "연결 안 됨" for a beat.
+  useEffect(() => {
+    if (supported) tryReconnect();
+  }, [supported, tryReconnect]);
+
+  // The intro owns the whole viewport; the wordmark is the centrepiece, so
+  // the bar carrying that same wordmark stays out of it.
+  const isLanding = route === ROUTES.LANDING;
 
   return (
-    <div className="min-h-screen bg-[#0b0c0f] text-white">
-      <BrowserGuard />
-      <TopBar />
-      <ErrorBanner />
+    <div className="min-h-screen bg-ground text-white">
+      {!isLanding && <TopBar />}
 
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
-        <div className="relative overflow-hidden rounded-3xl bg-[#e2e2e2] p-10">
-          <div className="mb-6 text-center">
-            <p className="text-xs uppercase tracking-wider text-slate-500">MY DEVICE</p>
-            <h1 className="text-lg font-bold text-slate-900">{connected ? product.name : 'FLIX'}</h1>
-          </div>
-
-          <KeypadHero />
-
-          {!connected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#e2e2e2]/85 backdrop-blur-sm">
-              <p className="text-sm text-slate-500">FLIX 기기가 연결되어 있지 않습니다</p>
-              <button
-                onClick={connect}
-                disabled={!supported || connecting}
-                className="rounded-xl bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {connecting ? '연결 중...' : '🔌 FLIX 기기 연결하기'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <StatusBar />
-        <DiagnosticPanel />
-
-        <p className="text-center text-xs text-white/30">
-          키캡을 클릭하면 할당 패널이 열립니다 · 저장 버튼 없이 즉시 반영됩니다
-        </p>
-      </main>
-
-      <AssignmentDrawer />
+      {isLanding && <LandingView />}
+      {route === ROUTES.MAP && <MapView />}
+      {route === ROUTES.BROWSE && <BrowseView />}
     </div>
   );
 }

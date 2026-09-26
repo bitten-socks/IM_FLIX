@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
 import {
   LETTER_KEYS,
@@ -51,8 +51,36 @@ function heldModifierLabels(e) {
   ].filter(Boolean);
 }
 
-function CustomCaptureTab({ onCapture }) {
+// With the panel permanently on screen, an armed capture can outlive the
+// user's intent -- they arm it, then click the page or tab away, and the next
+// key they press gets swallowed into a mapping they never asked for. So
+// arming ends on anything that means attention moved: a different key
+// selected, a click outside the trigger, or the window losing focus.
+export function useCaptureGuard(listening, stop, triggerRef, resetKey) {
+  useEffect(() => {
+    if (!listening) return undefined;
+
+    const onPointerDown = (e) => {
+      if (!triggerRef.current?.contains(e.target)) stop();
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('blur', stop);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('blur', stop);
+    };
+  }, [listening, stop, triggerRef]);
+
+  useEffect(() => {
+    stop();
+    // Only when the selected key changes -- stop is stable enough here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+}
+
+function CustomCaptureTab({ onCapture, keyIndex }) {
   const [listening, setListening] = useState(false);
+  const triggerRef = useRef(null);
   const [held, setHeld] = useState([]);
   const [lastCombo, setLastCombo] = useState(null);
 
@@ -94,9 +122,12 @@ function CustomCaptureTab({ onCapture }) {
     };
   }, [listening, onCapture]);
 
+  useCaptureGuard(listening, () => setListening(false), triggerRef, keyIndex);
+
   return (
     <div className="col-span-4 flex flex-col gap-3 py-2">
       <button
+        ref={triggerRef}
         onClick={() => setListening((v) => !v)}
         className={`w-full rounded-xl border-2 border-dashed py-6 transition ${
           listening
@@ -211,29 +242,46 @@ export default function AssignmentDrawer() {
       <div
         onClick={closeAssignment}
         aria-hidden="true"
-        className={`fixed inset-0 z-30 bg-black/50 transition-opacity ${
+        className={`fixed inset-0 z-30 bg-black/50 transition-opacity xl:hidden ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       />
       <aside
-        className={`fixed right-0 top-0 z-40 flex h-full w-full max-w-sm flex-col border-l border-white/10 bg-[#15171c] shadow-2xl transition-transform duration-200 ${
+        className={`fixed right-0 top-0 z-40 flex h-full w-full max-w-sm flex-col border-l border-white/10 bg-[#15171c] shadow-2xl transition-transform duration-200 xl:translate-x-0 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
           <div>
             <p className="text-[10px] uppercase tracking-wider text-white/40">
-              K{selectedKey === null ? '-' : selectedKey + 1}
+              {open ? `K${selectedKey + 1}` : '키 설정'}
             </p>
-            <p className="text-sm font-semibold text-white">현재: {currentLabel}</p>
+            <p className="text-sm font-semibold text-white">
+              {open ? `현재: ${currentLabel}` : '선택된 키 없음'}
+            </p>
           </div>
-          <button
-            onClick={closeAssignment}
-            className="rounded-lg p-1.5 text-white/40 hover:bg-white/5 hover:text-white"
-          >
-            ✕
-          </button>
+          {open && (
+            <button
+              onClick={closeAssignment}
+              aria-label="선택 해제"
+              className="rounded-lg p-1.5 text-white/40 hover:bg-white/5 hover:text-white"
+            >
+              ✕
+            </button>
+          )}
         </div>
+
+        {!open && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+            <p className="text-sm text-white/50">왼쪽에서 키캡을 클릭하세요</p>
+            <p className="text-xs leading-relaxed text-white/25">
+              고른 키의 설정이 여기에 나타납니다.
+            </p>
+          </div>
+        )}
+
+        {open && (
+          <>
 
         <div className="flex flex-wrap gap-1.5 border-b border-white/5 px-5 py-3">
           {TABS.map((t) => (
@@ -270,7 +318,9 @@ export default function AssignmentDrawer() {
         )}
 
         <div className="grid flex-1 auto-rows-min grid-cols-4 gap-2 overflow-y-auto p-5">
-          {tab === 'custom' && <CustomCaptureTab onCapture={assignKey} />}
+          {tab === 'custom' && (
+            <CustomCaptureTab onCapture={assignKey} keyIndex={selectedKey} />
+          )}
           {tab === 'word' && (
             <WordTab
               keyIndex={selectedKey}
@@ -336,6 +386,8 @@ export default function AssignmentDrawer() {
               </button>
             ))}
         </div>
+          </>
+        )}
       </aside>
     </>
   );

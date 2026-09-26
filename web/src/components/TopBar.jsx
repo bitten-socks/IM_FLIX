@@ -1,27 +1,19 @@
-import { useEffect } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
+import FlixLogo from './FlixLogo';
+import { ROUTES, navigate } from '../lib/router';
 
 export default function TopBar() {
-  const { connected, connecting, connect, disconnect, tryReconnect, supported } = useFlixStore();
-
-  useEffect(() => {
-    if (supported) tryReconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported]);
+  const { connected, connecting, connect, disconnect, supported } = useFlixStore();
 
   return (
     <header className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-      <div className="group flex cursor-pointer items-center gap-2">
-        <span className="font-logo text-2xl font-bold text-white">
-          <span className="tracking-[0.25em]">
-            FLI
-            <span className="inline-block tracking-normal transition-transform duration-300 ease-out group-hover:rotate-45">
-              X
-            </span>
-          </span>{' '}
-          <span className="tracking-wide text-cyan-400">MAP</span>
-        </span>
-      </div>
+      <button
+        onClick={() => navigate(ROUTES.LANDING)}
+        aria-label="처음으로"
+        className="group flex items-center gap-2"
+      >
+        <FlixLogo interactive />
+      </button>
 
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5 text-xs text-white/50">
