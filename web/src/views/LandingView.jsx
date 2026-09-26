@@ -33,7 +33,7 @@ function prefersReducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
-export default function LandingView({ onLeave }) {
+export default function LandingView({ onLeave, stageOut = true }) {
   // Skipping straight to the end state is what makes this bearable on the
   // tenth visit: any click lands it immediately.
   const [settled, setSettled] = useState(prefersReducedMotion);
@@ -75,8 +75,8 @@ export default function LandingView({ onLeave }) {
   const depart = (target) => {
     if (leaving) return;
 
-    if (prefersReducedMotion()) {
-      onLeave(null, target);
+    if (prefersReducedMotion() || !stageOut) {
+      onLeave(logoRef.current?.getBoundingClientRect() ?? null, target);
       return;
     }
 

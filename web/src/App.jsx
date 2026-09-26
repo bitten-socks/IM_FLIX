@@ -7,19 +7,34 @@ import BrowseView from './views/BrowseView';
 import { ROUTES, navigate, useRoute } from './lib/router';
 import { useFlixStore } from './store/useFlixStore';
 
-const FLIGHT_MS = 620;
+// Two screen transitions, side by side so they can be judged against each
+// other. `?fx=b` flies the wordmark from the intro to the top bar; anything
+// else dissolves through the page colour. One of these gets deleted once the
+// choice is made -- this is a comparison, not a setting worth keeping.
+const FX = new URLSearchParams(window.location.search).get('fx') === 'b' ? 'b' : 'a';
+
+const FLIGHT_MS = 620; // B: the wordmark's journey
+const VEIL_IN = 200; // A: page colour closing over the old screen
+const VEIL_OUT = 300; // A: and clearing off the new one
 
 export default function App() {
   const route = useRoute();
   const supported = useFlixStore((s) => s.supported);
   const tryReconnect = useFlixStore((s) => s.tryReconnect);
 
-  // The wordmark's journey out of the intro: `from` is where it sat there,
+  // B. The wordmark's journey out of the intro: `from` is where it sat there,
   // `to` where the top bar keeps it. Both have to be real measurements, and
   // `to` can only be taken once the bar exists -- which is after the route
   // has already changed.
   const [flight, setFlight] = useState(null);
   const topLogoRef = useRef(null);
+
+  // A. Opaque while the screens swap underneath, so the change is never seen
+  // happening. Nothing overlaps, which is what keeps the fixed assignment
+  // panel out of trouble -- fading a wrapper that contains it would tear it
+  // off the viewport.
+  const [veiled, setVeiled] = useState(false);
+  const veilTimers = useRef([]);
 
   // Reattach here rather than in the top bar, which the intro hides. Run from
   // the app shell it happens while the intro is still playing, so arriving at
@@ -29,10 +44,31 @@ export default function App() {
     if (supported) tryReconnect();
   }, [supported, tryReconnect]);
 
-  const leaveLanding = useCallback((fromRect, target) => {
-    if (fromRect) setFlight({ from: fromRect, to: null });
-    navigate(target);
+  useEffect(() => () => veilTimers.current.forEach(clearTimeout), []);
+
+  const go = useCallback((target) => {
+    if (FX === 'b') {
+      navigate(target);
+      return;
+    }
+    setVeiled(true);
+    veilTimers.current = [
+      setTimeout(() => {
+        navigate(target);
+        // A frame at full cover before lifting, so the new screen is never
+        // caught mid-mount.
+        veilTimers.current.push(setTimeout(() => setVeiled(false), 30));
+      }, VEIL_IN),
+    ];
   }, []);
+
+  const leaveLanding = useCallback(
+    (fromRect, target) => {
+      if (FX === 'b' && fromRect) setFlight({ from: fromRect, to: null });
+      go(target);
+    },
+    [go],
+  );
 
   // Before the browser paints the new screen, so the bar's logo is never seen
   // sitting there while its double is still mid-flight.
@@ -51,18 +87,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-ground text-white">
-      {!isLanding && <TopBar logoRef={topLogoRef} logoHidden={flying} />}
+      {!isLanding && <TopBar logoRef={topLogoRef} logoHidden={flying} onNavigate={go} />}
 
-      {isLanding && <LandingView onLeave={leaveLanding} />}
+      {isLanding && <LandingView onLeave={leaveLanding} stageOut={FX === 'b'} />}
       {route === ROUTES.MAP && <MapView key="map" />}
-      {route === ROUTES.BROWSE && <BrowseView key="browse" />}
+      {route === ROUTES.BROWSE && <BrowseView key="browse" onNavigate={go} />}
 
       {flying && (
-        <LogoFlight
-          from={flight.from}
-          to={flight.to}
-          duration={FLIGHT_MS}
-          onDone={endFlight}
+        <LogoFlight from={flight.from} to={flight.to} duration={FLIGHT_MS} onDone={endFlight} />
+      )}
+
+      {FX === 'a' && (
+        <div
+          aria-hidden="true"
+          style={{ transitionDuration: `${veiled ? VEIL_IN : VEIL_OUT}ms` }}
+          className={`pointer-events-none fixed inset-0 z-50 bg-ground transition-opacity ease-out ${
+            veiled ? 'opacity-100' : 'opacity-0'
+          }`}
         />
       )}
     </div>
