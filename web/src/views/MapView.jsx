@@ -4,6 +4,7 @@ import KeypadHero from '../components/KeypadHero';
 import AssignmentDrawer from '../components/AssignmentDrawer';
 import StatusBar from '../components/StatusBar';
 import DiagnosticPanel from '../components/DiagnosticPanel';
+import FadeIn from '../components/FadeIn';
 import { useFlixStore } from '../store/useFlixStore';
 
 // The mapping screen. BrowserGuard lives here rather than around the whole
@@ -24,6 +25,7 @@ export default function MapView() {
       <BrowserGuard />
       <ErrorBanner />
 
+      <FadeIn>
       <div className="xl:pr-96">
         <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
           <div className="relative overflow-hidden rounded-3xl bg-panel p-10">
@@ -58,6 +60,7 @@ export default function MapView() {
           </p>
         </main>
       </div>
+      </FadeIn>
 
       <AssignmentDrawer />
     </>

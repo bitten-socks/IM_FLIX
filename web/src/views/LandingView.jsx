@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import FlixLogo from '../components/FlixLogo';
-import { ROUTES, navigate } from '../lib/router';
 
 // The intro. The wordmark settles, the X turns out and back, then it rises as
 // the two ways in appear beneath it -- no click needed to get past the logo,
 // since a logo that must be clicked stops anyone who doesn't realise it.
+//
+// Leaving is staged rather than instant: the panels fade first, then the
+// wordmark's position is handed up to App, which flies it to the top bar. The
+// logo is the one thing both screens share, so it is what carries continuity
+// across the change.
 //
 // Every duration lives here so the pace can be tuned in one place. The feel
 // is meant to be unhurried rather than quick: slow easing, no bounce, and the
@@ -16,6 +20,7 @@ const TIMING = {
   xHold: 110, // a beat at full rotation
   buttonsIn: 520,
   lift: 620, // the wordmark easing up as the panels arrive
+  panelsOut: 220, // panels clearing before the wordmark travels
 };
 
 const X_REST = 0;
@@ -28,14 +33,16 @@ function prefersReducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
-export default function LandingView() {
+export default function LandingView({ onLeave }) {
   // Skipping straight to the end state is what makes this bearable on the
   // tenth visit: any click lands it immediately.
   const [settled, setSettled] = useState(prefersReducedMotion);
   const [logoShown, setLogoShown] = useState(false);
   const [xAngle, setXAngle] = useState(X_REST);
   const [showButtons, setShowButtons] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const timers = useRef([]);
+  const logoRef = useRef(null);
 
   useEffect(() => {
     if (settled) {
@@ -65,6 +72,23 @@ export default function LandingView() {
     if (!showButtons) setSettled(true);
   };
 
+  const depart = (target) => {
+    if (leaving) return;
+
+    if (prefersReducedMotion()) {
+      onLeave(null, target);
+      return;
+    }
+
+    // Clear the panels first, then hand the wordmark's exact position up so
+    // it can carry on from there. Measuring after the fade keeps the reading
+    // honest -- the logo has finished its rise by then.
+    setLeaving(true);
+    setTimeout(() => {
+      onLeave(logoRef.current?.getBoundingClientRect() ?? null, target);
+    }, TIMING.panelsOut);
+  };
+
   // Once the scripted turn is over the X goes back to answering the cursor,
   // the way it does in the top bar. Handing over means dropping the inline
   // angle entirely -- an inline transform would outrank the hover class and
@@ -84,31 +108,31 @@ export default function LandingView() {
         }`}
       >
         <div
+          ref={logoRef}
           style={{ transitionDuration: `${TIMING.logoIn}ms` }}
           className={`group cursor-pointer transition-all ease-out ${
             logoShown ? 'translate-y-0 opacity-100 blur-0' : 'translate-y-2 opacity-0 blur-[2px]'
-          }`}
+          } ${leaving ? 'opacity-0' : ''}`}
         >
-          <FlixLogo
-            size="xl"
-            xAngle={introOver ? null : xAngle}
-            interactive={introOver}
-          />
+          <FlixLogo size="xl" xAngle={introOver ? null : xAngle} interactive={introOver} />
         </div>
       </div>
 
       {/* One surface split down the middle rather than two buttons: the whole
-          half is the target, so it reads as choosing a side. No outer frame --
-          the fill that follows the cursor is what marks the edges. */}
+          half is the target, so it reads as choosing a side. */}
       <div
-        style={{ transitionDuration: `${TIMING.buttonsIn}ms` }}
+        style={{
+          transitionDuration: `${leaving ? TIMING.panelsOut : TIMING.buttonsIn}ms`,
+        }}
         className={`mt-12 w-full max-w-3xl transition-all ease-out ${
-          showButtons ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
+          showButtons && !leaving
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-3 opacity-0'
         }`}
       >
         <div className="grid grid-cols-2 divide-x divide-white/10 overflow-hidden rounded-2xl">
-          <Half label="키 맵핑" hint="내 기기 설정하기" accent onClick={() => navigate(ROUTES.MAP)} />
-          <Half label="둘러보기" hint="제품과 가이드" onClick={() => navigate(ROUTES.BROWSE)} />
+          <Half label="키 맵핑" hint="내 기기 설정하기" accent onClick={() => depart('/map')} />
+          <Half label="둘러보기" hint="제품과 가이드" onClick={() => depart('/browse')} />
         </div>
       </div>
     </div>
@@ -119,20 +143,18 @@ function Half({ label, hint, accent = false, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`group flex flex-col items-center justify-center gap-2 px-8 py-16 transition-colors duration-300 ${
-        accent ? 'hover:bg-cyan-500/[0.07]' : 'hover:bg-white/[0.05]'
-      }`}
+      className="group flex flex-col items-center justify-center gap-2 px-8 py-16"
     >
-      {/* Scaled rather than resized: changing font-size would reflow the row
-          and nudge its neighbour, while a transform stays in its own layer. */}
+      {/* The whole caption lifts together. Moving only the heading would open
+          a gap under it and read as two separate things. */}
       <span
-        className={`inline-block text-base font-semibold transition-transform duration-300 ease-out group-hover:scale-125 ${
+        className={`inline-block text-base font-semibold transition-transform duration-300 ease-out group-hover:-translate-y-1 ${
           accent ? 'text-cyan-300' : 'text-white/85'
         }`}
       >
         {label}
       </span>
-      <span className="inline-block text-[11px] text-white/30 transition-transform duration-300 ease-out group-hover:scale-110">
+      <span className="inline-block text-[11px] text-white/30 transition-transform duration-300 ease-out group-hover:-translate-y-1">
         {hint}
       </span>
     </button>
