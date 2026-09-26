@@ -2,16 +2,15 @@ import { useFlixStore } from '../store/useFlixStore';
 import FlixLogo from './FlixLogo';
 import { ROUTES, navigate } from '../lib/router';
 
-export default function TopBar({ logoRef, logoHidden = false, onNavigate = navigate }) {
+export default function TopBar({ onNavigate = navigate }) {
   const { connected, connecting, connect, disconnect, supported } = useFlixStore();
 
   return (
     <header className="flex items-center justify-between border-b border-white/5 px-6 py-4">
       <button
-        ref={logoRef}
         onClick={() => onNavigate(ROUTES.LANDING)}
         aria-label="처음으로"
-        className={`group flex items-center gap-2 ${logoHidden ? 'invisible' : ''}`}
+        className="group flex items-center gap-2"
       >
         <FlixLogo interactive />
       </button>
