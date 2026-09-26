@@ -102,7 +102,7 @@ export default function MacroPreview({ steps, labels = [] }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-white/60">
+        <span className="text-[13px] font-semibold text-white/60">
           미리 듣기 · 전체 {formatDuration(totalMs)}
         </span>
         <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function MacroPreview({ steps, labels = [] }) {
 
       <button
         onClick={play}
-        className={`rounded-lg py-2 text-xs font-semibold transition ${
+        className={`rounded-xl py-2.5 text-[13px] font-bold transition ${
           playing ? 'bg-white/10 text-white/70' : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400'
         }`}
       >

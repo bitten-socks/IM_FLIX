@@ -48,7 +48,7 @@ export default function MapView() {
       <ErrorBanner />
 
       <FadeIn>
-      <div className="xl:pr-96">
+      <div className="xl:pr-[28rem]">
         <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
           {/* Before a device is chosen the keypad is empty, leaving the
               panel shorter than the notice that sits over it -- which clipped

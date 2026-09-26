@@ -49,9 +49,9 @@ export default function WordTab({ keyIndex, detail, onSave }) {
   };
 
   return (
-    <div className="col-span-4 flex flex-col gap-4 py-2">
+    <div className="flex flex-col gap-5">
       <div>
-        <label className="mb-1.5 block text-xs font-semibold text-white/80" htmlFor="word-input">
+        <label className="mb-2 block text-sm font-semibold text-white/80" htmlFor="word-input">
           키 하나로 입력할 단어
         </label>
         <input
@@ -64,9 +64,9 @@ export default function WordTab({ keyIndex, detail, onSave }) {
           placeholder="예: block"
           spellCheck={false}
           autoComplete="off"
-          className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 font-mono text-sm text-white placeholder:text-white/20 focus:border-cyan-400 focus:outline-none"
+          className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3.5 font-mono text-lg text-white placeholder:text-white/20 focus:border-cyan-400 focus:outline-none"
         />
-        <div className="mt-1.5 flex items-center justify-between text-[11px]">
+        <div className="mt-2 flex items-center justify-between text-[13px]">
           <span className="text-white/35">영문·숫자·기호만 · 최대 {MAX_MACRO_STEPS}글자</span>
           <span className={steps.length >= MAX_MACRO_STEPS ? 'text-amber-300' : 'text-white/35'}>
             {steps.length} / {MAX_MACRO_STEPS}
@@ -94,12 +94,12 @@ export default function WordTab({ keyIndex, detail, onSave }) {
       <button
         onClick={save}
         disabled={!steps.length || saving}
-        className="rounded-xl bg-cyan-500 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-xl bg-cyan-500 py-3 text-[15px] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {saving ? '저장 중...' : saved ? '✓ 저장됨' : '이 단어로 저장'}
       </button>
 
-      <p className="text-[10px] leading-relaxed text-white/25">
+      <p className="text-xs leading-relaxed text-white/25">
         저장하면 이 키는 눌릴 때마다 위 단어를 입력합니다. 입력되는 곳의 언어가 영문일
         때만 의도한 대로 찍힙니다. 입력 속도는 <b className="text-white/40">빠르게</b>로
         고정되며, 바꾸려면 <b className="text-white/40">타이밍</b> 탭을 쓰세요.
@@ -110,7 +110,7 @@ export default function WordTab({ keyIndex, detail, onSave }) {
 
 function Notice({ children }) {
   return (
-    <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] leading-relaxed text-amber-200/80">
+    <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-[13px] leading-relaxed text-amber-200/80">
       {children}
     </p>
   );
