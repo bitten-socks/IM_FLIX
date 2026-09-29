@@ -277,6 +277,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
               value={commonGap}
               onChange={(v) => applyToAll({ gapMs: v })}
             />
+
+            <p className="text-xs leading-relaxed text-white/30">
+              막대는 {SLIDER_MAX_MS}ms까지 움직입니다. 더 길게 누르려면 숫자칸에 직접
+              적으세요 — 최대 {MAX_STEP_MS}ms({MAX_STEP_MS / 1000}초)까지 됩니다.
+            </p>
           </div>
 
           <button
@@ -354,13 +359,13 @@ function IconButton({ children, onClick, label, disabled = false, danger = false
   );
 }
 
-// The slider stops at a second; the firmware accepts five. Covering the whole
-// range with one track would squeeze the 10-100ms band everyone actually
-// works in down to a couple of percent of its length, where 20ms and 40ms
-// land on the same pixel. So the track covers the useful part and the box
-// beside it takes anything further -- a value past the end parks the thumb at
-// the far right rather than lying about where it is.
-const SLIDER_MAX_MS = 1000;
+// The track covers the band people actually work in; the firmware accepts far
+// more. Stretching one slider across the whole range would squeeze 10-100ms
+// into a couple of percent of its length, where 20ms and 40ms land on the
+// same pixel. So the box beside it takes anything longer, and a line under
+// the pair says so -- a value past the end parks the thumb at the far right,
+// which the number beside it corrects.
+const SLIDER_MAX_MS = 300;
 
 function Slider({ label, hint, value, onChange }) {
   const clamp = (v) => Math.min(MAX_STEP_MS, Math.max(MIN_STEP_MS, v));
@@ -390,12 +395,7 @@ function Slider({ label, hint, value, onChange }) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-cyan-400"
       />
-      <p className="mt-0.5 text-xs text-white/25">
-        {hint}
-        {value > SLIDER_MAX_MS && (
-          <span className="text-white/40"> · 막대 범위({SLIDER_MAX_MS}ms)를 넘는 값입니다</span>
-        )}
-      </p>
+      <p className="mt-0.5 text-xs text-white/25">{hint}</p>
     </div>
   );
 }
