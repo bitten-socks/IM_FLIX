@@ -264,33 +264,31 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
             ))}
           </div>
 
+          <div className="mt-4 flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <Slider
+              label="누르는 시간"
+              hint="키 하나를 누르고 있는 길이"
+              value={commonHold}
+              onChange={(v) => applyToAll({ holdMs: v })}
+            />
+            <Slider
+              label="다음 키까지 간격"
+              hint="떼고 나서 쉬는 시간"
+              value={commonGap}
+              onChange={(v) => applyToAll({ gapMs: v })}
+            />
+          </div>
+
           <button
             onClick={() => setShowNumbers((v) => !v)}
-            className="mt-2.5 text-xs text-white/35 underline-offset-2 transition hover:text-white/60 hover:underline"
+            className={`mt-3 w-full rounded-xl border py-2.5 text-[13px] font-medium transition ${
+              showNumbers
+                ? 'border-cyan-400/40 bg-cyan-500/10 text-cyan-200'
+                : 'border-white/10 text-white/50 hover:border-white/25 hover:text-white/75'
+            }`}
           >
-            {showNumbers ? '시간 직접 조정 숨기기' : '시간을 직접 조정하기'}
+            {showNumbers ? '단계별 조정 닫기' : '단계마다 다르게 설정하기'}
           </button>
-
-          {showNumbers && (
-            <div className="mt-4 flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <Slider
-                label="누르는 시간"
-                hint="키 하나를 누르고 있는 길이"
-                value={commonHold}
-                onChange={(v) => applyToAll({ holdMs: v })}
-              />
-              <Slider
-                label="다음 키까지 간격"
-                hint="떼고 나서 쉬는 시간"
-                value={commonGap}
-                onChange={(v) => applyToAll({ gapMs: v })}
-              />
-              <p className="text-xs leading-relaxed text-white/25">
-                여기서 옮기면 모든 단계에 같이 적용됩니다. 단계마다 다르게 하려면 위
-                목록의 숫자를 고치세요.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
