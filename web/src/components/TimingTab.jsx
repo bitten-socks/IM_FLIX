@@ -134,6 +134,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(false);
   };
 
+  const applyToAll = (patch) => {
+    setSteps((prev) => prev.map((s) => ({ ...s, ...patch })));
+    setSaved(false);
+  };
+
   const save = async () => {
     if (!steps.length) return;
     setSaving(true);
@@ -144,6 +149,10 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
 
   const labels = steps.map((s) => describeKey(s));
   const groups = chordGroups(steps, steps.length);
+  // The sliders speak for the whole sequence, so they show the first step's
+  // value -- which is what they are about to write to every step anyway.
+  const commonHold = steps[0]?.holdMs ?? DEFAULT_HOLD_MS;
+  const commonGap = steps[0]?.gapMs ?? DEFAULT_GAP_MS;
   const activeSpeed = SPEEDS.find(
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
@@ -261,6 +270,27 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           >
             {showNumbers ? '시간 직접 조정 숨기기' : '시간을 직접 조정하기'}
           </button>
+
+          {showNumbers && (
+            <div className="mt-4 flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <Slider
+                label="누르는 시간"
+                hint="키 하나를 누르고 있는 길이"
+                value={commonHold}
+                onChange={(v) => applyToAll({ holdMs: v })}
+              />
+              <Slider
+                label="다음 키까지 간격"
+                hint="떼고 나서 쉬는 시간"
+                value={commonGap}
+                onChange={(v) => applyToAll({ gapMs: v })}
+              />
+              <p className="text-xs leading-relaxed text-white/25">
+                여기서 옮기면 모든 단계에 같이 적용됩니다. 단계마다 다르게 하려면 위
+                목록의 숫자를 고치세요.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -323,6 +353,28 @@ function IconButton({ children, onClick, label, disabled = false, danger = false
     >
       {children}
     </button>
+  );
+}
+
+const SLIDER_MAX_MS = 300;
+
+function Slider({ label, hint, value, onChange }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <span className="text-[13px] text-white/70">{label}</span>
+        <span className="font-mono text-[13px] text-cyan-300">{value}ms</span>
+      </div>
+      <input
+        type="range"
+        min={MIN_STEP_MS}
+        max={SLIDER_MAX_MS}
+        value={Math.min(value, SLIDER_MAX_MS)}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-cyan-400"
+      />
+      <p className="mt-0.5 text-xs text-white/25">{hint}</p>
+    </div>
   );
 }
 
