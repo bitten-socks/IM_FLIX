@@ -354,14 +354,33 @@ function IconButton({ children, onClick, label, disabled = false, danger = false
   );
 }
 
-const SLIDER_MAX_MS = 300;
+// The slider stops at a second; the firmware accepts five. Covering the whole
+// range with one track would squeeze the 10-100ms band everyone actually
+// works in down to a couple of percent of its length, where 20ms and 40ms
+// land on the same pixel. So the track covers the useful part and the box
+// beside it takes anything further -- a value past the end parks the thumb at
+// the far right rather than lying about where it is.
+const SLIDER_MAX_MS = 1000;
 
 function Slider({ label, hint, value, onChange }) {
+  const clamp = (v) => Math.min(MAX_STEP_MS, Math.max(MIN_STEP_MS, v));
+
   return (
     <div>
-      <div className="mb-1.5 flex items-baseline justify-between">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
         <span className="text-[13px] text-white/70">{label}</span>
-        <span className="font-mono text-[13px] text-cyan-300">{value}ms</span>
+        <span className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min={MIN_STEP_MS}
+            max={MAX_STEP_MS}
+            value={value}
+            onChange={(e) => onChange(clamp(Number(e.target.value) || MIN_STEP_MS))}
+            aria-label={`${label} (밀리초)`}
+            className="w-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-[13px] text-cyan-300 focus:border-cyan-400 focus:outline-none"
+          />
+          <span className="text-xs text-white/30">ms</span>
+        </span>
       </div>
       <input
         type="range"
@@ -371,7 +390,12 @@ function Slider({ label, hint, value, onChange }) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-cyan-400"
       />
-      <p className="mt-0.5 text-xs text-white/25">{hint}</p>
+      <p className="mt-0.5 text-xs text-white/25">
+        {hint}
+        {value > SLIDER_MAX_MS && (
+          <span className="text-white/40"> · 막대 범위({SLIDER_MAX_MS}ms)를 넘는 값입니다</span>
+        )}
+      </p>
     </div>
   );
 }
