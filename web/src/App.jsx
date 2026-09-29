@@ -24,6 +24,8 @@ export default function App() {
   const route = useRoute();
   const supported = useFlixStore((s) => s.supported);
   const tryReconnect = useFlixStore((s) => s.tryReconnect);
+  const connected = useFlixStore((s) => s.connected);
+  const productName = useFlixStore((s) => s.product.name);
 
   const [veiled, setVeiled] = useState(false);
   const timers = useRef([]);
@@ -37,6 +39,17 @@ export default function App() {
   }, [supported, tryReconnect]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // The document can't name a model -- one site serves the whole line, and a
+  // VIBE 9 owner reading "VIBE 6" in their tab is just wrong. Narrow it here,
+  // once the device has said what it is.
+  useEffect(() => {
+    const suffix = {
+      [ROUTES.MAP]: connected ? `${productName} 키 설정` : '키 설정',
+      [ROUTES.BROWSE]: '둘러보기',
+    }[route];
+    document.title = suffix ? `flix map — ${suffix}` : 'flix map';
+  }, [route, connected, productName]);
 
   const go = useCallback((target) => {
     if (prefersReducedMotion()) {
