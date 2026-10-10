@@ -10,6 +10,17 @@ MCU/
 # Firmware build artifacts
 *.uf2
 
+# The GitHub repo is public and scoped to the web app only. Everything below
+# stays local: device firmware, production tooling, and design artwork.
+#
+# Note that keeping firmware source out of the public repo does not remove the
+# GPLv2 obligation attached to shipping QMK binaries -- it just means source
+# has to reach buyers another way (see QMK/PRODUCT-REGISTRY.md).
+QMK/
+이전/
+Assembly.png
+Assembly_v2.png
+
 # Bring-up screenshots (Mu console, device manager). Schematic captures worth
 # keeping should be moved into docs/ and committed deliberately.
 화면 캡처 *.png
@@ -19,3 +30,10 @@ Untitled.png
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Cost sheets, supplier docs, renders and shoot planning -- local only.
+BUSINESS/
+lander/
+PHOTO-SHOTLIST.md
+*_assemble*.png
+Untitled.png

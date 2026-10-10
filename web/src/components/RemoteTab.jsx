@@ -1,0 +1,146 @@
+import { useState } from 'react';
+import { useFlixStore } from '../store/useFlixStore';
+import { REMOTE_ROLES, SCOPES, layoutAssignments, layoutFor } from '../lib/remote';
+
+// Setting the whole device up as a video remote, in one button.
+//
+// Every other tab assigns the one key that is selected, because that is what
+// mapping normally is. This one does not fit that shape: a remote is a set of
+// keys that only makes sense together -- seek either side of play/pause,
+// volume under it -- and asking someone to place six roles one at a time,
+// guessing the arrangement as they go, is how they end up with a layout they
+// have to re-learn. So the preset writes the lot, and the per-key buttons
+// underneath are for changing your mind about one of them afterwards.
+//
+// The roles are grouped by how far they reach, not by what they do. Which
+// buttons keep working when you switch from YouTube to Netflix is the thing
+// someone building a remote actually needs to know, and nothing on the device
+// can tell them later.
+
+// The note is the actual key being sent -- "→", "Shift + ." -- kept under the
+// role rather than beside it. Beside it, the longer pairs wrapped and the two
+// columns stopped lining up; under it, the role name is what the eye runs
+// down and the keycode is there for whoever wants to check it.
+function RoleButton({ role, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group rounded-xl bg-white/5 px-3.5 py-2.5 text-left transition hover:bg-cyan-500"
+    >
+      <span className="block text-[15px] font-medium text-white/90 group-hover:text-slate-950">
+        {role.label}
+      </span>
+      <span className="mt-0.5 block text-[11px] text-white/30 group-hover:text-slate-950/55">
+        {role.note ?? '미디어 키'}
+      </span>
+    </button>
+  );
+}
+
+// The arrangement the preset is about to write, drawn as the keypad itself.
+// A list of role names in key order is not something anyone can picture; the
+// grid is, and it is the only way to see that seek sits either side of play
+// before committing to it.
+function LayoutPreview({ layout, columns }) {
+  return (
+    <div
+      className="grid gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {layout.map((roleId, i) => (
+        <div
+          key={`${roleId}-${i}`}
+          className="rounded-lg bg-black/25 px-1.5 py-2.5 text-center text-[11px] font-medium leading-tight text-white/70"
+        >
+          {REMOTE_ROLES[roleId].label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function RemoteTab({ keyIndex }) {
+  const product = useFlixStore((s) => s.product);
+  const assignKey = useFlixStore((s) => s.assignKey);
+  const assignKeys = useFlixStore((s) => s.assignKeys);
+  const [applied, setApplied] = useState(false);
+
+  const layout = layoutFor(product.keyCount);
+
+  const applyAll = async () => {
+    await assignKeys(layoutAssignments(product.keyCount));
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2600);
+  };
+
+  const pick = (role) =>
+    assignKey({ mod: role.mod ?? 0, code: role.code, isMedia: role.isMedia });
+
+  const grouped = Object.entries(SCOPES).map(([scope, meta]) => [
+    scope,
+    meta,
+    Object.values(REMOTE_ROLES).filter((r) => r.scope === scope),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
+        <p className="text-[13px] leading-relaxed text-white/55">
+          <b className="text-white/80">여기서 설정하고, 폰에 꽂아 쓰세요.</b> 설정은 기기 안에
+          저장되므로 PC에서 뽑아 폰이나 태블릿에 연결해도 그대로입니다.
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-white/35">
+          앱 설치도 페어링도 없고, 충전할 배터리도 없습니다. 데이터가 오가는 C to C 케이블이
+          필요하며, 기기에 따라 동작이 다를 수 있습니다.
+        </p>
+      </div>
+
+      {layout && (
+        <div>
+          <p className="mb-2.5 text-[13px] text-white/45">
+            {product.name} 전체를 한 번에 리모컨으로 바꿉니다.
+          </p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <LayoutPreview layout={layout} columns={product.columns} />
+            <button
+              onClick={applyAll}
+              className={`mt-4 w-full rounded-xl py-3 text-[15px] font-bold transition ${
+                applied
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400'
+              }`}
+            >
+              {applied ? '적용했습니다' : '이대로 전체 적용'}
+            </button>
+            <p className="mt-2.5 text-center text-xs leading-relaxed text-white/30">
+              모든 키를 덮어씁니다. 언제든 다른 탭에서 하나씩 되돌릴 수 있습니다.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-white/5 pt-5">
+        <p className="mb-3 text-[13px] text-white/45">
+          또는 지금 고른{' '}
+          <b className="text-white/75">K{keyIndex + 1}</b> 에만 하나씩 지정합니다.
+        </p>
+
+        <div className="flex flex-col gap-5">
+          {grouped.map(([scope, meta, roles]) => (
+            <div key={scope}>
+              <div className="mb-2 flex items-baseline gap-2">
+                <span className={`text-xs font-bold ${meta.tone}`}>{meta.label}</span>
+                <span className="text-[11px] text-white/25">{meta.why}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {roles.map((r) => (
+                  <RoleButton key={r.label} role={r} onClick={() => pick(r)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

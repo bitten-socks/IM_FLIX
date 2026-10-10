@@ -28,7 +28,13 @@ const FEATURES = [
     step: '03',
     title: '키 맵핑 가능',
     body: '브라우저에서 바로 설정합니다. 프로그램을 깔 필요가 없고, 바꾼 값은 기기에 저장되어 다른 PC에 꽂아도 그대로입니다.',
-    slot: '맵핑 화면과 기기가 함께 보이는 사진',
+    slot: '키마다 다른 용도를 선으로 연결한 그래픽',
+  },
+  {
+    step: '04',
+    title: '폰·태블릿에서는 영상 리모컨',
+    body: '설정이 기기 안에 저장되기 때문에, PC에서 뽑아 폰이나 태블릿에 꽂으면 그대로 리모컨이 됩니다. 재생과 볼륨은 앱을 가리지 않고 동작합니다. 앱 설치도, 페어링도, 충전할 배터리도 없습니다.',
+    slot: '태블릿으로 강의를 보며 옆에 둔 기기를 누르는 손',
   },
 ];
 
@@ -37,19 +43,19 @@ const USE_CASES = [
     tag: 'AI',
     title: 'AI와 대화할 때',
     body: '자주 쓰는 지시를 키 하나에 담아 둡니다. 선택지를 고를 때 누르는 1·2 같은 답도 손을 옮기지 않고 누를 수 있습니다.',
-    slot: 'AI 화면 옆에 놓인 기기',
+    slot: '오버헤드 · 화면과 기기를 바로 위에서',
   },
   {
     tag: 'GAME',
     title: '게임',
     body: '배틀그라운드의 수류탄 교체처럼 손이 꼬이는 키를 하나로 모읍니다. FIFA의 연속 입력 커맨드도 한 번에 넣을 수 있습니다.',
-    slot: '게임 화면 + 키보드 옆 기기',
+    slot: '손 클로즈업 · 화면은 뒤에서 흐리게',
   },
   {
     tag: 'WORK',
     title: '작업',
     body: '오토캐드 단축키, 편집 툴의 자주 쓰는 명령을 손 닿는 곳에 둡니다. 단축키를 외우는 대신 키에 적어 두는 셈입니다.',
-    slot: '작업 화면 + 책상 위 기기',
+    slot: '책상 전체 · 일상에 섞여 있는 모습',
   },
 ];
 
@@ -121,9 +127,18 @@ function DetailBlock({ label, title, body, slot }) {
 
 // Stands in for photography that doesn't exist yet, and says what goes here
 // so the block can be reviewed as a layout rather than as a gap.
+//
+// Portrait, not the 16:9 this started as. The same photographs have to work
+// in a marketplace listing, where the page is a single column read on a
+// phone and every image is taller than it is wide; shooting wide for here
+// and re-cropping for there means either losing the sides or shooting
+// everything twice. 4:5 is the compromise that survives both -- tall enough
+// to hold the column on a phone, not so tall it pushes the caption off this
+// page -- and it is narrower than the text column on purpose, because a
+// portrait block at full width would be taller than the viewport.
 function ImageSlot({ note }) {
   return (
-    <div className="flex aspect-[16/9] w-full items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02]">
+    <div className="mx-auto flex aspect-[4/5] w-full max-w-sm items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02]">
       <p className="px-6 text-center text-xs text-white/25">
         이미지 자리
         <br />

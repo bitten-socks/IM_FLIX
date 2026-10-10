@@ -19,6 +19,7 @@ import {
 import { KEY_MODE } from '../lib/protocol';
 import WordTab from './WordTab';
 import TimingTab from './TimingTab';
+import RemoteTab from './RemoteTab';
 
 // Two levels rather than one strip of eight tabs.
 //
@@ -32,6 +33,7 @@ const BASIC_TABS = [
   { id: 'numbers', label: '숫자·기호' },
   { id: 'fkeys', label: 'F1–F12' },
   { id: 'media', label: '미디어' },
+  { id: 'remote', label: '영상 리모컨' },
   { id: 'macro', label: '단축키' },
 ];
 
@@ -356,6 +358,7 @@ export default function AssignmentDrawer() {
 
             <div className="flex-1 overflow-y-auto p-6">
               {tab === 'custom' && <CustomCaptureTab onCapture={assignKey} keyIndex={selectedKey} />}
+              {tab === 'remote' && <RemoteTab keyIndex={selectedKey} />}
               {tab === 'word' && (
                 <WordTab
                   keyIndex={selectedKey}

@@ -327,5 +327,48 @@ export const useFlixStore = create((set, get) => ({
     set({ keymap: next, lastSync: Date.now(), error: null });
   },
 
+  // Write several keys in one go, for a whole-device preset. Each packet is
+  // the same CMD_WRITE_KEY a single assignment sends, and the firmware forces
+  // the key back to direct mode as it lands -- so this also undoes a macro
+  // that happened to be sitting on one of these keys.
+  //
+  // Cached detail for the keys written is dropped rather than patched: it
+  // still describes the macro that was there, and the panel reads it to
+  // decide what to call the key. Whatever is still selected is pulled again.
+  assignKeys: async (assignments) => {
+    const { device, selectedKey } = get();
+    if (!device || !assignments.length) return;
+    try {
+      for (const a of assignments) {
+        await sendPacket(
+          device,
+          buildWritePacket({
+            keyIndex: a.keyIndex,
+            mod: a.mod ?? 0,
+            code: a.code,
+            isMedia: a.isMedia ?? 0,
+          }),
+        );
+      }
+    } catch (err) {
+      set({ error: `프리셋 적용 실패: ${err.message}` });
+      return;
+    }
+
+    const written = new Set(assignments.map((a) => a.keyIndex));
+    set((s) => ({
+      keyDetails: Object.fromEntries(
+        Object.entries(s.keyDetails).filter(([i]) => !written.has(Number(i))),
+      ),
+      lastSync: Date.now(),
+      error: null,
+    }));
+
+    await get().refreshKeymap();
+    if (selectedKey !== null && written.has(selectedKey)) {
+      await get().loadKeyDetail(selectedKey);
+    }
+  },
+
   dismissError: () => set({ error: null }),
 }));
