@@ -1,26 +1,28 @@
 import { useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
-import { REMOTE_ROLES, SCOPES, layoutAssignments, layoutFor } from '../lib/remote';
+import { REMOTE_ROLES, layoutAssignments, layoutFor, rolesByScope } from '../lib/remote';
 
-// Setting the whole device up as a video remote, in one button.
+// Setting the device up for a phone or tablet.
 //
 // Every other tab assigns the one key that is selected, because that is what
-// mapping normally is. This one does not fit that shape: a remote is a set of
-// keys that only makes sense together -- seek either side of play/pause,
+// mapping normally is. The preset here does not fit that shape: a remote is a
+// set of keys that only makes sense together -- seek either side of play,
 // volume under it -- and asking someone to place six roles one at a time,
 // guessing the arrangement as they go, is how they end up with a layout they
-// have to re-learn. So the preset writes the lot, and the per-key buttons
-// underneath are for changing your mind about one of them afterwards.
+// have to re-learn. So the preset writes the lot, and the roles underneath
+// are for changing your mind about one of them afterwards.
 //
 // The roles are grouped by how far they reach, not by what they do. Which
-// buttons keep working when you switch from YouTube to Netflix is the thing
-// someone building a remote actually needs to know, and nothing on the device
+// buttons keep working when you switch from YouTube to a reader is the thing
+// someone setting this up actually needs to know, and nothing on the device
 // can tell them later.
 
-// The note is the actual key being sent -- "→", "Shift + ." -- kept under the
-// role rather than beside it. Beside it, the longer pairs wrapped and the two
-// columns stopped lining up; under it, the role name is what the eye runs
-// down and the keycode is there for whoever wants to check it.
+// The note is the actual key being sent -- "→", "Ctrl + C · 안드로이드 · PC" --
+// kept under the role rather than beside it. Beside it, the longer pairs
+// wrapped and the two columns stopped lining up; under it, the role name is
+// what the eye runs down and the keycode is there for whoever wants to check
+// it. It also carries the platform, which is the whole reason 복사 appears
+// twice.
 function RoleButton({ role, onClick }) {
   return (
     <button
@@ -30,7 +32,7 @@ function RoleButton({ role, onClick }) {
       <span className="block text-[15px] font-medium text-white/90 group-hover:text-slate-950">
         {role.label}
       </span>
-      <span className="mt-0.5 block text-[11px] text-white/30 group-hover:text-slate-950/55">
+      <span className="mt-0.5 block text-[11px] leading-tight text-white/30 group-hover:text-slate-950/55">
         {role.note ?? '미디어 키'}
       </span>
     </button>
@@ -76,12 +78,6 @@ export default function RemoteTab({ keyIndex }) {
   const pick = (role) =>
     assignKey({ mod: role.mod ?? 0, code: role.code, isMedia: role.isMedia });
 
-  const grouped = Object.entries(SCOPES).map(([scope, meta]) => [
-    scope,
-    meta,
-    Object.values(REMOTE_ROLES).filter((r) => r.scope === scope),
-  ]);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
@@ -98,7 +94,7 @@ export default function RemoteTab({ keyIndex }) {
       {layout && (
         <div>
           <p className="mb-2.5 text-[13px] text-white/45">
-            {product.name} 전체를 한 번에 리모컨으로 바꿉니다.
+            {product.name} 전체를 한 번에 영상 리모컨으로 바꿉니다.
           </p>
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
             <LayoutPreview layout={layout} columns={product.columns} />
@@ -113,7 +109,7 @@ export default function RemoteTab({ keyIndex }) {
               {applied ? '적용했습니다' : '이대로 전체 적용'}
             </button>
             <p className="mt-2.5 text-center text-xs leading-relaxed text-white/30">
-              모든 키를 덮어씁니다. 언제든 다른 탭에서 하나씩 되돌릴 수 있습니다.
+              모든 키를 덮어씁니다. 언제든 아래에서 하나씩 바꿀 수 있습니다.
             </p>
           </div>
         </div>
@@ -121,12 +117,11 @@ export default function RemoteTab({ keyIndex }) {
 
       <div className="border-t border-white/5 pt-5">
         <p className="mb-3 text-[13px] text-white/45">
-          또는 지금 고른{' '}
-          <b className="text-white/75">K{keyIndex + 1}</b> 에만 하나씩 지정합니다.
+          또는 지금 고른 <b className="text-white/75">K{keyIndex + 1}</b> 에만 하나씩 지정합니다.
         </p>
 
         <div className="flex flex-col gap-5">
-          {grouped.map(([scope, meta, roles]) => (
+          {rolesByScope().map(({ scope, meta, roles }) => (
             <div key={scope}>
               <div className="mb-2 flex items-baseline gap-2">
                 <span className={`text-xs font-bold ${meta.tone}`}>{meta.label}</span>
@@ -134,12 +129,26 @@ export default function RemoteTab({ keyIndex }) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {roles.map((r) => (
-                  <RoleButton key={r.label} role={r} onClick={() => pick(r)} />
+                  <RoleButton key={r.id} role={r} onClick={() => pick(r)} />
                 ))}
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Macros are played by the firmware, not by anything on the host, so
+          they cross to a phone untouched -- but nothing on this screen would
+          suggest that, and someone who set one up on a PC has no reason to
+          assume it still works. Said here rather than in 고급, because this
+          is the tab where the question comes up. */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
+        <p className="text-[13px] font-semibold text-white/75">단어와 매크로도 그대로 됩니다</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-white/40">
+          <b className="text-white/60">고급</b> 탭에서 만든 단어 입력과 순서·타이밍 매크로는 기기
+          안에서 재생됩니다. 폰에 꽂아도 PC에서와 똑같이 입력되므로, 자주 쓰는 답장이나 아이디를 키
+          하나에 넣어 두면 폰에서도 한 번에 나옵니다.
+        </p>
       </div>
     </div>
   );

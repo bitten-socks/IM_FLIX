@@ -33,7 +33,7 @@ const BASIC_TABS = [
   { id: 'numbers', label: '숫자·기호' },
   { id: 'fkeys', label: 'F1–F12' },
   { id: 'media', label: '미디어' },
-  { id: 'remote', label: '영상 리모컨' },
+  { id: 'remote', label: '모바일' },
   { id: 'macro', label: '단축키' },
 ];
 

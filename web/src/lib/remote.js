@@ -1,23 +1,28 @@
-// The "video remote" role set: what a FLIX becomes when it is unplugged from
-// the PC and plugged into a phone or tablet.
+// What a FLIX is good for once it leaves the PC and goes into a phone or
+// tablet: a video remote, a page-turner, and a clipboard key.
 //
 // Nothing here is new firmware. These are ordinary single-key assignments --
 // the same CMD_WRITE_KEY the rest of the panel sends. What makes them worth
 // collecting is that choosing them by *role* ("앞으로 감기") instead of by
-// keycode ("→") is the only way someone setting up a remote can tell which
-// buttons will work everywhere and which depend on the app.
+// keycode ("→") is the only way someone setting this up can tell which
+// buttons will keep working when they switch apps, and which will not.
 //
 // That distinction is the real content of this file, and it is not cosmetic:
 //
-//   os      Consumer Control usage. The operating system handles it, so it
-//           works over any app -- and it is the same report a Bluetooth
-//           media remote sends, which is why these survive the move to a
-//           phone at all.
-//   app     An ordinary key the focused app has to choose to handle. Most
-//           video players take the arrows; the seek distance is theirs to
-//           decide, not ours.
-//   youtube Documented YouTube shortcuts. Exact and reliable there, inert
-//           elsewhere.
+//   os     Consumer Control usage. The operating system handles it, so it
+//          works over any app -- and it is the same report a Bluetooth media
+//          remote sends, which is why these survive the move to a phone at
+//          all.
+//   app    An ordinary key the focused app has to choose to handle. Most
+//          video players take the arrows and most readers take Page Down;
+//          the distance scrolled is theirs to decide, not ours.
+//   edit   Clipboard shortcuts. These are split by platform rather than
+//          offered once, because the modifier genuinely differs: Android and
+//          PC copy with Ctrl, iPhone and iPad with Cmd. One button labelled
+//          "복사" would be wrong on half the devices it is pressed on.
+//   youtube
+//          Documented YouTube shortcuts. Exact and reliable there, inert
+//          elsewhere.
 //
 // Codes are HID usage ids, matching the tables in keycodes.js.
 
@@ -26,6 +31,7 @@ import { MOD_BITS } from './keycodes';
 export const SCOPES = {
   os: { label: '모든 앱', tone: 'text-emerald-300', why: '운영체제가 직접 처리합니다' },
   app: { label: '앱에 따라', tone: 'text-amber-300', why: '앱이 키보드 입력을 받을 때 동작합니다' },
+  edit: { label: '편집', tone: 'text-sky-300', why: '기기에 맞는 쪽을 고르세요' },
   youtube: { label: '유튜브', tone: 'text-white/40', why: '유튜브의 정식 단축키입니다' },
 };
 
@@ -39,27 +45,22 @@ export const REMOTE_ROLES = {
 
   seekback: { label: '뒤로 감기', note: '←', code: 0x50, isMedia: 0, scope: 'app' },
   seekfwd: { label: '앞으로 감기', note: '→', code: 0x4f, isMedia: 0, scope: 'app' },
+  pagedown: { label: '다음 쪽 · 스크롤 ↓', note: 'Page Down', code: 0x4e, isMedia: 0, scope: 'app' },
+  pageup: { label: '이전 쪽 · 스크롤 ↑', note: 'Page Up', code: 0x4b, isMedia: 0, scope: 'app' },
+  linedown: { label: '한 줄 아래', note: '↓', code: 0x51, isMedia: 0, scope: 'app' },
+  lineup: { label: '한 줄 위', note: '↑', code: 0x52, isMedia: 0, scope: 'app' },
+
+  copy: { label: '복사', note: 'Ctrl + C · 안드로이드 · PC', mod: MOD_BITS.CTRL, code: 0x06, isMedia: 0, scope: 'edit' },
+  paste: { label: '붙여넣기', note: 'Ctrl + V · 안드로이드 · PC', mod: MOD_BITS.CTRL, code: 0x19, isMedia: 0, scope: 'edit' },
+  copyApple: { label: '복사', note: 'Cmd + C · 아이폰 · 아이패드', mod: MOD_BITS.WIN, code: 0x06, isMedia: 0, scope: 'edit' },
+  pasteApple: { label: '붙여넣기', note: 'Cmd + V · 아이폰 · 아이패드', mod: MOD_BITS.WIN, code: 0x19, isMedia: 0, scope: 'edit' },
 
   back10: { label: '10초 뒤로', note: 'J', code: 0x0d, isMedia: 0, scope: 'youtube' },
   fwd10: { label: '10초 앞으로', note: 'L', code: 0x0f, isMedia: 0, scope: 'youtube' },
   fullscreen: { label: '전체화면', note: 'F', code: 0x09, isMedia: 0, scope: 'youtube' },
   caption: { label: '자막 켜기 / 끄기', note: 'C', code: 0x06, isMedia: 0, scope: 'youtube' },
-  slower: {
-    label: '배속 느리게',
-    note: 'Shift + ,',
-    mod: MOD_BITS.SHIFT,
-    code: 0x36,
-    isMedia: 0,
-    scope: 'youtube',
-  },
-  faster: {
-    label: '배속 빠르게',
-    note: 'Shift + .',
-    mod: MOD_BITS.SHIFT,
-    code: 0x37,
-    isMedia: 0,
-    scope: 'youtube',
-  },
+  slower: { label: '배속 느리게', note: 'Shift + ,', mod: MOD_BITS.SHIFT, code: 0x36, isMedia: 0, scope: 'youtube' },
+  faster: { label: '배속 빠르게', note: 'Shift + .', mod: MOD_BITS.SHIFT, code: 0x37, isMedia: 0, scope: 'youtube' },
 };
 
 // One layout per product, in key order -- row-major, the same order the
@@ -97,4 +98,16 @@ export function layoutAssignments(keyCount) {
       isMedia: role.isMedia,
     };
   });
+}
+
+// Grouped for display, in SCOPES order, carrying each role's id so two roles
+// that share a label (복사, twice, once per platform) stay distinguishable.
+export function rolesByScope() {
+  return Object.entries(SCOPES).map(([scope, meta]) => ({
+    scope,
+    meta,
+    roles: Object.entries(REMOTE_ROLES)
+      .filter(([, r]) => r.scope === scope)
+      .map(([id, r]) => ({ id, ...r })),
+  }));
 }
