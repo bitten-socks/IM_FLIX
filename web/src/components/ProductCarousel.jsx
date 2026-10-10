@@ -3,32 +3,35 @@ import { SUPPORTED_PRODUCT_IDS, productForId } from '../lib/products';
 
 // The line inside one wide panel, turning as it scrolls.
 //
-// One surface holding all three rather than three separate cards: the panel
-// is the display case, and the products move within it. The turn is driven by
-// scroll position rather than by a selected index, so it tracks a finger or a
-// trackpad continuously instead of snapping between fixed poses -- that
-// continuity is what makes it read as one rotating surface.
+// The turn is real now: three renders per product -- facing the camera and
+// rotated either way -- cross-faded by scroll position, so a product appears
+// to swing round to face you as it reaches the middle. That replaces the CSS
+// rotateY this used to fake, and the two must not both be applied: the
+// renders already carry their own perspective, and tilting them again reads
+// as a photograph leaning over rather than an object turning.
 //
-// Transforms are written straight to the nodes; only the caption is React
-// state, and it changes a few times per drag rather than every frame. A
-// scroll handler that re-renders on every frame is the usual reason a
-// carousel like this stutters.
+// All nine were cropped from one shared rectangle, so a product sits in the
+// same place in every file. Switching angle therefore never shifts it, and
+// VIBE 4 stays visibly smaller than VIBE 9 because it is.
+//
+// Opacity is written straight to the nodes; only the caption is React state,
+// and it changes a few times per drag rather than every frame.
 
-const CARD_W = 300; // px; the padding maths below depends on it
-const MAX_TURN = 34; // degrees at the edge of the run
-const MAX_SHRINK = 0.16;
-const MAX_FADE = 0.6;
+const CARD_W = 300;
+const MAX_SHRINK = 0.14;
 
 function prefersReducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
+
+const ANGLES = ['front', 'left', 'right'];
 
 export default function ProductCarousel() {
   const trackRef = useRef(null);
   const activeRef = useRef(0);
   const [active, setActive] = useState(0);
 
-  const products = SUPPORTED_PRODUCT_IDS.map(productForId).filter((p) => p?.artwork);
+  const products = SUPPORTED_PRODUCT_IDS.map(productForId).filter(Boolean);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -44,20 +47,31 @@ export default function ProductCarousel() {
       let nearest = 0;
       let nearestGap = Infinity;
 
+      // Measured against the gap between cards, not the viewport: a card one
+      // place from the middle must land on a single clean pose, or every card
+      // at rest shows two angles at once and reads as a double exposure.
+      const pitch = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : track.clientWidth;
+
       cards.forEach((card, i) => {
         const away = card.offsetLeft + card.offsetWidth / 2 - middle;
         if (Math.abs(away) < nearestGap) {
           nearestGap = Math.abs(away);
           nearest = i;
         }
-        // Normalised against a little over half the case so a product is
-        // fully turned by the time it reaches the edge.
-        const t = Math.max(-1, Math.min(1, away / (track.clientWidth * 0.55)));
-        const face = card.firstElementChild;
-        face.style.transform = flat
-          ? 'none'
-          : `rotateY(${-t * MAX_TURN}deg) scale(${1 - Math.abs(t) * MAX_SHRINK})`;
-        face.style.opacity = String(1 - Math.abs(t) * MAX_FADE);
+        const turn = Math.min(1, Math.abs(away) / pitch);
+
+        const [front, left, right] = card.querySelectorAll('img');
+        if (flat) {
+          front.style.opacity = '1';
+          left.style.opacity = '0';
+          right.style.opacity = '0';
+        } else {
+          front.style.opacity = String(1 - turn);
+          // Sitting left of the middle, a product should look back toward it.
+          left.style.opacity = String(away < 0 ? turn : 0);
+          right.style.opacity = String(away > 0 ? turn : 0);
+        }
+        card.style.transform = flat ? 'none' : `scale(${1 - turn * MAX_SHRINK})`;
       });
 
       if (nearest !== activeRef.current) {
@@ -105,25 +119,27 @@ export default function ProductCarousel() {
       <div className="relative overflow-hidden rounded-3xl bg-panel">
         <div
           ref={trackRef}
-          style={{ perspective: '1400px' }}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-[max(1rem,calc(50%-150px))] py-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {products.map((p) => (
             <div
               key={p.id}
               data-card="1"
-              style={{ width: CARD_W }}
-              className="flex shrink-0 snap-center items-center"
+              style={{ width: CARD_W, willChange: 'transform' }}
+              className="relative shrink-0 snap-center"
             >
-              {/* The face is what turns; the slot around it keeps its place in
-                  the scroll run so the maths above stays simple. */}
-              <img
-                src={p.artwork}
-                alt={`${p.name} 외형`}
-                style={{ willChange: 'transform' }}
-                className="block w-full select-none"
-                draggable="false"
-              />
+              {/* Stacked rather than swapped so one angle dissolves into the
+                  next; the first holds the box open, the rest lie over it. */}
+              {ANGLES.map((angle, i) => (
+                <img
+                  key={angle}
+                  src={`/${p.id}-${angle}.png`}
+                  alt={i === 0 ? `${p.name} 외형` : ''}
+                  aria-hidden={i > 0}
+                  draggable="false"
+                  className={`block w-full select-none ${i === 0 ? '' : 'absolute inset-0'}`}
+                />
+              ))}
             </div>
           ))}
         </div>
