@@ -7,11 +7,12 @@ import { ROUTES } from '../lib/router';
 // since a logo that must be clicked stops anyone who doesn't realise it.
 //
 // Every duration lives here so the pace can be tuned in one place. The feel
-// is meant to be unhurried rather than quick: slow easing, no bounce, and the
-// X's turn overlapping the tail of the wordmark's fade.
+// is meant to be unhurried rather than quick: slow easing, no bounce, and a
+// pause after the wordmark settles before the X turns, so the two movements
+// read as two beats instead of one blur.
 const TIMING = {
   logoIn: 850, // wordmark fading and settling
-  xStart: 500, // the X begins turning while that is still finishing
+  xStart: 1000, // the X begins turning a beat after the wordmark lands
   xTurn: 560, // out, and later back
   xHold: 110, // a beat at full rotation
   buttonsIn: 520,
