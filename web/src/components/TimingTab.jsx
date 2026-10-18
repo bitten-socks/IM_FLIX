@@ -43,6 +43,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           code: s.code,
           isMedia: s.isMedia,
           chord: s.chord ?? 0,
+          sustain: s.sustain ?? 0,
           holdMs: s.holdMs || DEFAULT_HOLD_MS,
           gapMs: s.gapMs || DEFAULT_GAP_MS,
         })),
@@ -58,6 +59,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 code: first.code,
                 isMedia: first.isMedia,
                 chord: 0,
+                sustain: 0,
                 holdMs: DEFAULT_HOLD_MS,
                 gapMs: DEFAULT_GAP_MS,
               },
@@ -88,7 +90,15 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           ? prev
           : [
               ...prev,
-              { mod, code, isMedia: 0, chord: 0, holdMs: DEFAULT_HOLD_MS, gapMs: DEFAULT_GAP_MS },
+              {
+                mod,
+                code,
+                isMedia: 0,
+                chord: 0,
+                sustain: 0,
+                holdMs: DEFAULT_HOLD_MS,
+                gapMs: DEFAULT_GAP_MS,
+              },
             ],
       );
       setListening(false);
@@ -193,6 +203,23 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 </div>
 
                 {!isLast && (
+                  <button
+                    onClick={() =>
+                      update(i, { sustain: step.sustain ? 0 : 1, chord: 0 })
+                    }
+                    className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
+                      step.sustain
+                        ? 'bg-amber-500/20 text-amber-200'
+                        : 'bg-white/[0.04] text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    {step.sustain
+                      ? '✓ 끝까지 누르고 있음'
+                      : '끝까지 누르고 있기'}
+                  </button>
+                )}
+
+                {!isLast && !step.sustain && (
                   <button
                     onClick={() => update(i, { chord: step.chord ? 0 : 1 })}
                     className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${

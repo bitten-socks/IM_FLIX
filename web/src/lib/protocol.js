@@ -51,7 +51,7 @@ export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 // Chunked CMD_READ_KEY replies landed in protocol 4 and chords in 5. Older
 // firmware packs steps at a different offset and has no chord flag, so
 // reading it with this parser would silently yield wrong timings.
-export const MIN_PROTOCOL_VERSION = 5;
+export const MIN_PROTOCOL_VERSION = 6;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
@@ -63,6 +63,9 @@ const STEP_FLAG_MEDIA = 0x80;
 // A run of these fires as one chord -- the only way two ordinary keys (not
 // just modifiers) can go down at the same instant.
 const STEP_FLAG_CHORD = 0x20;
+// Stays down after its group ends, so later steps land on top of it. Released
+// with everything else when the macro finishes.
+const STEP_FLAG_SUSTAIN = 0x10;
 const STEP_MOD_MASK = 0x0f;
 // Only present in the compact keymap dump, never stored in a step.
 const DUMP_FLAG_MACRO = 0x40;
@@ -157,6 +160,7 @@ export function buildWriteStepPacket({
   code,
   isMedia = 0,
   chord = 0,
+  sustain = 0,
   holdMs,
   gapMs,
 }) {
@@ -167,7 +171,8 @@ export function buildWriteStepPacket({
   buf[3] =
     (mod & STEP_MOD_MASK) |
     (isMedia ? STEP_FLAG_MEDIA : 0) |
-    (chord ? STEP_FLAG_CHORD : 0);
+    (chord ? STEP_FLAG_CHORD : 0) |
+    (sustain ? STEP_FLAG_SUSTAIN : 0);
   buf[4] = code & 0xff;
   buf[5] = holdMs & 0xff;
   buf[6] = (holdMs >> 8) & 0xff;
@@ -202,6 +207,7 @@ export function parseKeyDetailResponse(data) {
       mod: modByte & STEP_MOD_MASK,
       isMedia: (modByte & STEP_FLAG_MEDIA) !== 0 ? 1 : 0,
       chord: (modByte & STEP_FLAG_CHORD) !== 0 ? 1 : 0,
+      sustain: (modByte & STEP_FLAG_SUSTAIN) !== 0 ? 1 : 0,
       code: bytes[idx + 1],
       holdMs: bytes[idx + 2] | (bytes[idx + 3] << 8),
       gapMs: bytes[idx + 4] | (bytes[idx + 5] << 8),
@@ -218,7 +224,7 @@ export function parseKeyDetailResponse(data) {
 }
 
 export function emptyStep() {
-  return { mod: 0, isMedia: 0, chord: 0, code: 0, holdMs: 0, gapMs: 0 };
+  return { mod: 0, isMedia: 0, chord: 0, sustain: 0, code: 0, holdMs: 0, gapMs: 0 };
 }
 
 // Split steps into the groups that actually fire together, so callers can
