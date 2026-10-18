@@ -199,6 +199,21 @@ const SHIFTED_SYMBOLS = {
 };
 
 // char -> { code, shift } for everything a word may contain.
+// Keys a macro needs but a keyboard cannot type into a text box. Each is one
+// glyph, so textToSteps() picks them up without any escape syntax -- "↓↑↑" is
+// three steps the same way "abc" is. The glyph is also what the user sees in
+// the field, which reads closer to the game command than a token like {DOWN}
+// would. Arrows reuse the labels NAV_KEYS already carries.
+export const MACRO_KEY_TOKENS = [
+  { token: '↑', code: 0x52, label: '위' },
+  { token: '↓', code: 0x51, label: '아래' },
+  { token: '←', code: 0x50, label: '왼쪽' },
+  { token: '→', code: 0x4f, label: '오른쪽' },
+  { token: '⏎', code: 0x28, label: 'Enter' },
+  { token: '⇥', code: 0x2b, label: 'Tab' },
+  { token: '⎋', code: 0x29, label: 'Esc' },
+];
+
 export const TEXT_CHAR_TO_KEY = (() => {
   const map = {};
   LETTER_KEYS.forEach(({ code, label }) => {
@@ -212,6 +227,9 @@ export const TEXT_CHAR_TO_KEY = (() => {
     map[label] = { code, shift: false };
   });
   map[' '] = { code: 0x2c, shift: false };
+  MACRO_KEY_TOKENS.forEach(({ token, code }) => {
+    map[token] = { code, shift: false };
+  });
   Object.entries(SHIFTED_SYMBOLS).forEach(([ch, code]) => {
     map[ch] = { code, shift: true };
   });

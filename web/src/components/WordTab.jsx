@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MAX_MACRO_STEPS } from '../lib/protocol';
-import { textToSteps, stepsToText } from '../lib/keycodes';
+import { textToSteps, stepsToText, MACRO_KEY_TOKENS } from '../lib/keycodes';
 
-// Types a short word from a single key: one macro step per character.
+// Types a short sequence from a single key: one macro step per character.
+//
+// Arrows, Enter, Tab and Esc join the alphabet as single glyphs rather than
+// as an escape syntax, so a game command reads as "↓↑↑" and is built the same
+// way a word is. They go in by button because no keyboard can type them into
+// a text box.
 //
 // Timing is fixed here rather than exposed. Every character of a word wants
 // the same rhythm, so a per-word control would be a knob with one sensible
@@ -25,6 +30,24 @@ export default function WordTab({ keyIndex, detail, onSave }) {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const inputRef = useRef(null);
+
+  // Arrows and Enter have no character a keyboard can put in a text box, so
+  // they go in by button. Inserting at the caret rather than appending is
+  // what lets a command be fixed in the middle once it is written.
+  const insertToken = (token) => {
+    const el = inputRef.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + token + text.slice(end));
+    setSaved(false);
+    // After the value updates, put the caret past what was inserted so
+    // repeated clicks build a sequence instead of stacking in one spot.
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
 
   // Seed from whatever the device already holds, so opening the tab shows the
   // current word rather than an empty box the user might save over blindly.
@@ -52,10 +75,11 @@ export default function WordTab({ keyIndex, detail, onSave }) {
     <div className="flex flex-col gap-5">
       <div>
         <label className="mb-2 block text-sm font-semibold text-white/80" htmlFor="word-input">
-          키 하나로 입력할 단어
+          키 하나로 보낼 입력
         </label>
         <input
           id="word-input"
+          ref={inputRef}
           value={text}
           onChange={(e) => {
             setText(e.target.value);
@@ -67,10 +91,31 @@ export default function WordTab({ keyIndex, detail, onSave }) {
           className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3.5 font-mono text-lg text-white placeholder:text-white/20 focus:border-cyan-400 focus:outline-none"
         />
         <div className="mt-2 flex items-center justify-between text-[13px]">
-          <span className="text-white/35">영문·숫자·기호만 · 최대 {MAX_MACRO_STEPS}글자</span>
+          <span className="text-white/35">
+            영문·숫자·기호·방향키 · 최대 {MAX_MACRO_STEPS}개
+          </span>
           <span className={steps.length >= MAX_MACRO_STEPS ? 'text-amber-300' : 'text-white/35'}>
             {steps.length} / {MAX_MACRO_STEPS}
           </span>
+        </div>
+
+        <div className="mt-3">
+          <p className="mb-1.5 text-xs text-white/35">
+            키보드로 칠 수 없는 키는 눌러서 넣으세요
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {MACRO_KEY_TOKENS.map(({ token, label }) => (
+              <button
+                key={token}
+                onClick={() => insertToken(token)}
+                title={label}
+                className="flex min-w-[52px] flex-col items-center rounded-lg border border-white/10 px-2.5 py-1.5 transition hover:border-cyan-400/50 hover:bg-cyan-500/5"
+              >
+                <span className="font-mono text-base leading-none text-white/85">{token}</span>
+                <span className="mt-1 text-[10px] leading-none text-white/35">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -96,13 +141,14 @@ export default function WordTab({ keyIndex, detail, onSave }) {
         disabled={!steps.length || saving}
         className="rounded-xl bg-cyan-500 py-3 text-[15px] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {saving ? '저장 중...' : saved ? '✓ 저장됨' : '이 단어로 저장'}
+        {saving ? '저장 중...' : saved ? '✓ 저장됨' : '이대로 저장'}
       </button>
 
       <p className="text-xs leading-relaxed text-white/25">
-        저장하면 이 키는 눌릴 때마다 위 단어를 입력합니다. 입력되는 곳의 언어가 영문일
-        때만 의도한 대로 찍힙니다. 입력 속도는 <b className="text-white/40">빠르게</b>로
-        고정되며, 바꾸려면 <b className="text-white/40">타이밍</b> 탭을 쓰세요.
+        저장하면 이 키는 눌릴 때마다 위 순서대로 입력합니다. 글자가 들어가는 경우,
+        입력되는 곳의 언어가 영문일 때만 의도한 대로 찍힙니다. 입력 속도는{' '}
+        <b className="text-white/40">빠르게</b>로 고정되며, 바꾸려면{' '}
+        <b className="text-white/40">타이밍</b> 탭을 쓰세요.
       </p>
     </div>
   );
