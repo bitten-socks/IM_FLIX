@@ -327,7 +327,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
         </div>
       )}
 
-      {steps.length > 1 && (
+      {pressPhase.length > 1 && (
         <button
           onClick={() =>
             setSteps((prev) => {
@@ -343,9 +343,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
               : 'bg-white/[0.04] text-white/55 hover:bg-white/10'
           }`}
         >
-          {allSustained ? '✓ 전부 손 뗄 때까지 누르고 있음' : '전부 손 뗄 때까지 누르고 있기'}
+          {allSustained
+            ? '✓ 누르는 동안 전부 잡고 있음'
+            : '누르는 동안 전부 잡고 있기'}
           <span className="mt-0.5 block text-[11px] font-normal text-white/35">
-            순서대로 눌러서 전부 잡고 있다가, 손을 떼면 같이 놓습니다
+            순서대로 눌러서 {pressPhase.length}개를 모두 잡고 있다가, 손을 떼면 같이 놓습니다
           </span>
         </button>
       )}
