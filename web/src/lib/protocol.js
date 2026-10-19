@@ -48,12 +48,11 @@ export const MAX_MACRO_STEPS = 16;
 export const STEPS_PER_CHUNK = 4;
 export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 
-// Chunked CMD_READ_KEY replies landed in protocol 4, chords in 5, and in 7 a
-// sustained key started following the finger instead of ending with the
-// sequence. Older firmware either packs steps at a different offset, or
-// accepts the hold and drops it a few dozen milliseconds later -- which looks
-// like it worked, while anything charged by holding quietly cuts short.
-export const MIN_PROTOCOL_VERSION = 7;
+// Chunked CMD_READ_KEY replies landed in protocol 4, chords in 5, a hold that
+// follows the finger in 7, and a release phase in 8. Older firmware either
+// packs steps at a different offset or accepts a flag and ignores it, which
+// looks like it worked while the part that matters never happens.
+export const MIN_PROTOCOL_VERSION = 8;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
@@ -68,6 +67,11 @@ const STEP_FLAG_CHORD = 0x20;
 // Stays down after its group ends, so later steps land on top of it. Released
 // with everything else when the macro finishes.
 const STEP_FLAG_SUSTAIN = 0x10;
+// From this step on, the sequence plays when the key is let go rather than
+// when it is pressed. Pressing a key that is already down gives a game no new
+// press to read, so a second tap of the same key can only come after the
+// first one ends.
+const STEP_FLAG_ON_RELEASE = 0x40;
 const STEP_MOD_MASK = 0x0f;
 // Only present in the compact keymap dump, never stored in a step.
 const DUMP_FLAG_MACRO = 0x40;
@@ -163,6 +167,7 @@ export function buildWriteStepPacket({
   isMedia = 0,
   chord = 0,
   sustain = 0,
+  onRelease = 0,
   holdMs,
   gapMs,
 }) {
@@ -174,7 +179,8 @@ export function buildWriteStepPacket({
     (mod & STEP_MOD_MASK) |
     (isMedia ? STEP_FLAG_MEDIA : 0) |
     (chord ? STEP_FLAG_CHORD : 0) |
-    (sustain ? STEP_FLAG_SUSTAIN : 0);
+    (sustain ? STEP_FLAG_SUSTAIN : 0) |
+    (onRelease ? STEP_FLAG_ON_RELEASE : 0);
   buf[4] = code & 0xff;
   buf[5] = holdMs & 0xff;
   buf[6] = (holdMs >> 8) & 0xff;
@@ -210,6 +216,7 @@ export function parseKeyDetailResponse(data) {
       isMedia: (modByte & STEP_FLAG_MEDIA) !== 0 ? 1 : 0,
       chord: (modByte & STEP_FLAG_CHORD) !== 0 ? 1 : 0,
       sustain: (modByte & STEP_FLAG_SUSTAIN) !== 0 ? 1 : 0,
+      onRelease: (modByte & STEP_FLAG_ON_RELEASE) !== 0 ? 1 : 0,
       code: bytes[idx + 1],
       holdMs: bytes[idx + 2] | (bytes[idx + 3] << 8),
       gapMs: bytes[idx + 4] | (bytes[idx + 5] << 8),
@@ -226,7 +233,7 @@ export function parseKeyDetailResponse(data) {
 }
 
 export function emptyStep() {
-  return { mod: 0, isMedia: 0, chord: 0, sustain: 0, code: 0, holdMs: 0, gapMs: 0 };
+  return { mod: 0, isMedia: 0, chord: 0, sustain: 0, onRelease: 0, code: 0, holdMs: 0, gapMs: 0 };
 }
 
 // Split steps into the groups that actually fire together, so callers can

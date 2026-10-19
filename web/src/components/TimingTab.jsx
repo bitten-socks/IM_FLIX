@@ -64,6 +64,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           isMedia: s.isMedia,
           chord: s.chord ?? 0,
           sustain: s.sustain ?? 0,
+          onRelease: s.onRelease ?? 0,
           holdMs: s.holdMs || DEFAULT_HOLD_MS,
           gapMs: s.gapMs || DEFAULT_GAP_MS,
         })),
@@ -80,6 +81,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 isMedia: first.isMedia,
                 chord: 0,
                 sustain: 0,
+                onRelease: 0,
                 holdMs: DEFAULT_HOLD_MS,
                 gapMs: DEFAULT_GAP_MS,
               },
@@ -116,6 +118,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 isMedia: 0,
                 chord: 0,
                 sustain: 0,
+                onRelease: 0,
                 holdMs: DEFAULT_HOLD_MS,
                 gapMs: DEFAULT_GAP_MS,
               },
@@ -172,7 +175,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       // A trailing "together" flag would now point at the first appended step
       // and silently chord them, so clear it before extending.
       ...prev.map((s, i) => (i === prev.length - 1 ? { ...s, chord: 0 } : s)),
-      ...draftParsed.steps.map((s) => ({ ...s, chord: 0, sustain: 0 })),
+      ...draftParsed.steps.map((s) => ({ ...s, chord: 0, sustain: 0, onRelease: 0 })),
     ]);
     setDraft('');
     setSaved(false);
@@ -207,7 +210,13 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(true);
   };
 
-  const allSustained = steps.length > 0 && steps.every((s) => s.sustain);
+  // Measured over the press phase only -- steps that play after the lift are
+  // taps by definition and can never be held.
+  const pressPhase = (() => {
+    const cut = steps.findIndex((s) => s.onRelease);
+    return cut === -1 ? steps : steps.slice(0, cut);
+  })();
+  const allSustained = pressPhase.length > 0 && pressPhase.every((s) => s.sustain);
   const labels = steps.map((s) => describeKey(s));
   const groups = chordGroups(steps, steps.length);
   // The sliders speak for the whole sequence, so they show the first step's
@@ -264,7 +273,24 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   {step.sustain ? '✓ 손 뗄 때까지 누르고 있음' : '손 뗄 때까지 누르고 있기'}
                 </button>
 
-                {!isLast && !step.sustain && (
+                {i > 0 && (
+                  <button
+                    onClick={() =>
+                      update(i, { onRelease: step.onRelease ? 0 : 1, chord: 0, sustain: 0 })
+                    }
+                    className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
+                      step.onRelease
+                        ? 'bg-violet-500/20 text-violet-200'
+                        : 'bg-white/[0.04] text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    {step.onRelease
+                      ? '✓ 여기부터 손 뗀 뒤에 실행'
+                      : '여기부터 손 뗀 뒤에 실행'}
+                  </button>
+                )}
+
+                {!isLast && !step.sustain && !step.onRelease && (
                   <button
                     onClick={() => update(i, { chord: step.chord ? 0 : 1 })}
                     className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
@@ -303,7 +329,14 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
 
       {steps.length > 1 && (
         <button
-          onClick={() => applyToAll({ sustain: allSustained ? 0 : 1, chord: 0 })}
+          onClick={() =>
+            setSteps((prev) => {
+              const cut = prev.findIndex((s) => s.onRelease);
+              const end = cut === -1 ? prev.length : cut;
+              const on = allSustained ? 0 : 1;
+              return prev.map((s, i) => (i < end ? { ...s, sustain: on, chord: 0 } : s));
+            }) || setSaved(false)
+          }
           className={`rounded-xl px-4 py-3 text-left text-[13px] font-semibold transition ${
             allSustained
               ? 'bg-amber-500/20 text-amber-200'
