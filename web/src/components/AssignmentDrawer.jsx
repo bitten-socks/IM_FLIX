@@ -17,7 +17,6 @@ import {
   stepsToText,
 } from '../lib/keycodes';
 import { KEY_MODE } from '../lib/protocol';
-import WordTab from './WordTab';
 import TimingTab from './TimingTab';
 import RemoteTab from './RemoteTab';
 
@@ -38,8 +37,7 @@ const BASIC_TABS = [
 ];
 
 const ADVANCED_TABS = [
-  { id: 'word', label: '단어 입력' },
-  { id: 'timing', label: '순서·타이밍' },
+  { id: 'timing', label: '여러 키 보내기' },
 ];
 
 const KEY_GRID_TABS = new Set(['letters', 'numbers', 'fkeys', 'media', 'macro']);
@@ -221,7 +219,7 @@ function CustomCaptureTab({ onCapture, keyIndex }) {
 export default function AssignmentDrawer() {
   const [mode, setMode] = useState('basic');
   const [basicTab, setBasicTab] = useState('custom');
-  const [advancedTab, setAdvancedTab] = useState('word');
+  const [advancedTab, setAdvancedTab] = useState('timing');
   const [activeMods, setActiveMods] = useState(0);
   const { selectedKey, keymap, keyDetails, assignKey, closeAssignment, loadKeyDetail, programMacro } =
     useFlixStore();
@@ -359,13 +357,6 @@ export default function AssignmentDrawer() {
             <div className="flex-1 overflow-y-auto p-6">
               {tab === 'custom' && <CustomCaptureTab onCapture={assignKey} keyIndex={selectedKey} />}
               {tab === 'remote' && <RemoteTab keyIndex={selectedKey} />}
-              {tab === 'word' && (
-                <WordTab
-                  keyIndex={selectedKey}
-                  detail={detail}
-                  onSave={(steps) => programMacro(selectedKey, steps)}
-                />
-              )}
               {tab === 'timing' && (
                 <TimingTab
                   keyIndex={selectedKey}

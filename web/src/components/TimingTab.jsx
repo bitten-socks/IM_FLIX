@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { MAX_MACRO_STEPS, MIN_STEP_MS, MAX_STEP_MS, KEY_MODE, chordGroups } from '../lib/protocol';
-import { DOM_CODE_TO_HID, isModifierDomCode, MOD_BITS, describeKey } from '../lib/keycodes';
+import {
+  DOM_CODE_TO_HID,
+  isModifierDomCode,
+  MOD_BITS,
+  describeKey,
+  textToSteps,
+  MACRO_KEY_TOKENS,
+} from '../lib/keycodes';
 import MacroPreview from './MacroPreview';
 import { useCaptureGuard } from './AssignmentDrawer';
 
-// Step-by-step editor for sequences where the timing is the point -- a combo
-// whose second press must land just after the first, or two keys that have to
-// go down at the same instant.
+// The whole sequence editor: what the key sends, in what order, and with what
+// timing.
+//
+// Typing and the step list used to be separate tabs, which could not work --
+// each one held its own copy of the sequence and saved all of it, so whichever
+// was edited last silently threw the other's work away. There is one list of
+// steps here and every control writes to it. Text is an input method for that
+// list, not a second copy of it: typing appends and never rewrites what is
+// already there, which is what keeps the two from fighting.
 //
 // Milliseconds are not the interface. Nobody knows what 20ms feels like, so
 // the speed is chosen by name and the numbers only appear for someone who
@@ -16,6 +29,11 @@ import { useCaptureGuard } from './AssignmentDrawer';
 
 const DEFAULT_HOLD_MS = 20;
 const DEFAULT_GAP_MS = 30;
+
+// Appended steps take the speed the sequence already runs at, so adding to a
+// macro does not leave one stretch marching to a different beat.
+const commonHoldFor = (steps) => steps[0]?.holdMs ?? DEFAULT_HOLD_MS;
+const commonGapFor = (steps) => steps[0]?.gapMs ?? DEFAULT_GAP_MS;
 
 const SPEEDS = [
   { id: 'snap', name: '따닥', hint: '연타처럼 붙여서', holdMs: 15, gapMs: 20 },
@@ -27,6 +45,8 @@ const SPEEDS = [
 export default function TimingTab({ keyIndex, detail, onSave }) {
   const [steps, setSteps] = useState([]);
   const [listening, setListening] = useState(false);
+  const [draft, setDraft] = useState('');
+  const draftRef = useRef(null);
   const [showNumbers, setShowNumbers] = useState(false);
   const addRef = useRef(null);
   const [saving, setSaving] = useState(false);
@@ -137,6 +157,36 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       return next;
     });
     setSaved(false);
+  };
+
+  const room = MAX_MACRO_STEPS - steps.length;
+  const draftParsed = textToSteps(draft, {
+    holdMs: commonHoldFor(steps),
+    gapMs: commonGapFor(steps),
+    limit: Math.max(0, room),
+  });
+
+  const appendDraft = () => {
+    if (!draftParsed.steps.length) return;
+    setSteps((prev) => [
+      // A trailing "together" flag would now point at the first appended step
+      // and silently chord them, so clear it before extending.
+      ...prev.map((s, i) => (i === prev.length - 1 ? { ...s, chord: 0 } : s)),
+      ...draftParsed.steps.map((s) => ({ ...s, chord: 0, sustain: 0 })),
+    ]);
+    setDraft('');
+    setSaved(false);
+  };
+
+  const insertToken = (token) => {
+    const el = draftRef.current;
+    const start = el?.selectionStart ?? draft.length;
+    const end = el?.selectionEnd ?? draft.length;
+    setDraft(draft.slice(0, start) + token + draft.slice(end));
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + token.length, start + token.length);
+    });
   };
 
   const applySpeed = (speed) => {
@@ -255,6 +305,63 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           })}
         </div>
       )}
+
+      <div className="rounded-xl border border-white/10 p-3.5">
+        <p className="mb-2 text-[13px] font-semibold text-white/70">글자로 추가</p>
+        <div className="flex gap-2">
+          <input
+            ref={draftRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                appendDraft();
+              }
+            }}
+            placeholder="예: block"
+            spellCheck={false}
+            autoComplete="off"
+            disabled={room <= 0}
+            className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 font-mono text-[15px] text-white placeholder:text-white/20 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+          />
+          <button
+            onClick={appendDraft}
+            disabled={!draftParsed.steps.length}
+            className="shrink-0 rounded-lg bg-white/10 px-4 text-[13px] font-semibold text-white/80 transition hover:bg-white/15 disabled:opacity-30"
+          >
+            추가
+          </button>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {MACRO_KEY_TOKENS.map(({ token, label }) => (
+            <button
+              key={token}
+              onClick={() => insertToken(token)}
+              title={label}
+              disabled={room <= 0}
+              className="flex min-w-[46px] flex-col items-center rounded-lg border border-white/10 px-2 py-1.5 transition hover:border-cyan-400/50 hover:bg-cyan-500/5 disabled:opacity-30"
+            >
+              <span className="font-mono text-sm leading-none text-white/85">{token}</span>
+              <span className="mt-1 text-[10px] leading-none text-white/35">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {draftParsed.rejected.length > 0 && (
+          <p className="mt-2 text-[12px] leading-relaxed text-amber-200/80">
+            넣을 수 없어 빠지는 글자: <b>{draftParsed.rejected.join(' ')}</b>
+            {draftParsed.rejected.some((ch) => /[ㄱ-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch)) && (
+              <>
+                <br />
+                한글은 키보드가 아니라 PC의 한/영 상태가 만드는 글자라, 기기에서 직접 보낼
+                수 없습니다.
+              </>
+            )}
+          </p>
+        )}
+      </div>
 
       <button
         ref={addRef}

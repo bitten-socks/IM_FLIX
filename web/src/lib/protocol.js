@@ -48,10 +48,12 @@ export const MAX_MACRO_STEPS = 16;
 export const STEPS_PER_CHUNK = 4;
 export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 
-// Chunked CMD_READ_KEY replies landed in protocol 4 and chords in 5. Older
-// firmware packs steps at a different offset and has no chord flag, so
-// reading it with this parser would silently yield wrong timings.
-export const MIN_PROTOCOL_VERSION = 6;
+// Chunked CMD_READ_KEY replies landed in protocol 4, chords in 5, and in 7 a
+// sustained key started following the finger instead of ending with the
+// sequence. Older firmware either packs steps at a different offset, or
+// accepts the hold and drops it a few dozen milliseconds later -- which looks
+// like it worked, while anything charged by holding quietly cuts short.
+export const MIN_PROTOCOL_VERSION = 7;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
