@@ -207,6 +207,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(true);
   };
 
+  const allSustained = steps.length > 0 && steps.every((s) => s.sustain);
   const labels = steps.map((s) => describeKey(s));
   const groups = chordGroups(steps, steps.length);
   // The sliders speak for the whole sequence, so they show the first step's
@@ -252,22 +253,16 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   </IconButton>
                 </div>
 
-                {!isLast && (
-                  <button
-                    onClick={() =>
-                      update(i, { sustain: step.sustain ? 0 : 1, chord: 0 })
-                    }
-                    className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
-                      step.sustain
-                        ? 'bg-amber-500/20 text-amber-200'
-                        : 'bg-white/[0.04] text-white/40 hover:bg-white/10'
-                    }`}
-                  >
-                    {step.sustain
-                      ? '✓ 끝까지 누르고 있음'
-                      : '끝까지 누르고 있기'}
-                  </button>
-                )}
+                <button
+                  onClick={() => update(i, { sustain: step.sustain ? 0 : 1, chord: 0 })}
+                  className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
+                    step.sustain
+                      ? 'bg-amber-500/20 text-amber-200'
+                      : 'bg-white/[0.04] text-white/40 hover:bg-white/10'
+                  }`}
+                >
+                  {step.sustain ? '✓ 손 뗄 때까지 누르고 있음' : '손 뗄 때까지 누르고 있기'}
+                </button>
 
                 {!isLast && !step.sustain && (
                   <button
@@ -304,6 +299,22 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
             );
           })}
         </div>
+      )}
+
+      {steps.length > 1 && (
+        <button
+          onClick={() => applyToAll({ sustain: allSustained ? 0 : 1, chord: 0 })}
+          className={`rounded-xl px-4 py-3 text-left text-[13px] font-semibold transition ${
+            allSustained
+              ? 'bg-amber-500/20 text-amber-200'
+              : 'bg-white/[0.04] text-white/55 hover:bg-white/10'
+          }`}
+        >
+          {allSustained ? '✓ 전부 손 뗄 때까지 누르고 있음' : '전부 손 뗄 때까지 누르고 있기'}
+          <span className="mt-0.5 block text-[11px] font-normal text-white/35">
+            순서대로 눌러서 전부 잡고 있다가, 손을 떼면 같이 놓습니다
+          </span>
+        </button>
       )}
 
       <div className="rounded-xl border border-white/10 p-3.5">
