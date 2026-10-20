@@ -49,10 +49,10 @@ export const STEPS_PER_CHUNK = 4;
 export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 
 // Chunked CMD_READ_KEY replies landed in protocol 4, chords in 5, a hold that
-// follows the finger in 7, and a release phase in 8. Older firmware either
+// follows the finger in 7, a release phase in 8, and wheel codes in 9. Older firmware either
 // packs steps at a different offset or accepts a flag and ignores it, which
 // looks like it worked while the part that matters never happens.
-export const MIN_PROTOCOL_VERSION = 8;
+export const MIN_PROTOCOL_VERSION = 9;
 
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;

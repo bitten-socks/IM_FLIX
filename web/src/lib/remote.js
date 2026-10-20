@@ -13,6 +13,10 @@
 //          works over any app -- and it is the same report a Bluetooth media
 //          remote sends, which is why these survive the move to a phone at
 //          all.
+//   wheel  A mouse wheel notch. Not a key at all, so an app that ignores the
+//          keyboard still scrolls -- the pointer stack handles it instead,
+//          which is why this reaches apps Page Down cannot. Held, it repeats.
+//          iPhone needs AssistiveTouch on before it accepts a pointer.
 //   app    An ordinary key the focused app has to choose to handle. Most
 //          video players take the arrows and most readers take Page Down;
 //          the distance scrolled is theirs to decide, not ours.
@@ -30,6 +34,11 @@ import { MOD_BITS } from './keycodes';
 
 export const SCOPES = {
   os: { label: '모든 앱', tone: 'text-emerald-300', why: '운영체제가 직접 처리합니다' },
+  wheel: {
+    label: '대부분의 앱',
+    tone: 'text-emerald-300',
+    why: '마우스 휠로 스크롤합니다 · 아이폰은 AssistiveTouch를 켜야 합니다',
+  },
   app: { label: '앱에 따라', tone: 'text-amber-300', why: '앱이 키보드 입력을 받을 때 동작합니다' },
   edit: { label: '편집', tone: 'text-sky-300', why: '기기에 맞는 쪽을 고르세요' },
   youtube: { label: '유튜브', tone: 'text-white/40', why: '유튜브의 정식 단축키입니다' },
@@ -45,6 +54,9 @@ export const REMOTE_ROLES = {
 
   seekback: { label: '뒤로 감기', note: '←', code: 0x50, isMedia: 0, scope: 'app' },
   seekfwd: { label: '앞으로 감기', note: '→', code: 0x4f, isMedia: 0, scope: 'app' },
+  wheeldown: { label: '스크롤 ↓', note: '마우스 휠 · 누르면 계속', code: 0xf1, isMedia: 1, scope: 'wheel' },
+  wheelup: { label: '스크롤 ↑', note: '마우스 휠 · 누르면 계속', code: 0xf0, isMedia: 1, scope: 'wheel' },
+
   pagedown: { label: '다음 쪽 · 스크롤 ↓', note: 'Page Down', code: 0x4e, isMedia: 0, scope: 'app' },
   pageup: { label: '이전 쪽 · 스크롤 ↑', note: 'Page Up', code: 0x4b, isMedia: 0, scope: 'app' },
   linedown: { label: '한 줄 아래', note: '↓', code: 0x51, isMedia: 0, scope: 'app' },

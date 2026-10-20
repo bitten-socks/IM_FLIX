@@ -136,6 +136,17 @@ export function isModifierDomCode(domCode) {
   return MODIFIER_DOM_CODES.has(domCode);
 }
 
+// Wheel codes travel in the media range: every bit of a step's flag byte is
+// spoken for, and the Consumer Control page has nothing at 0xF0-0xF3, so the
+// range is free to mean something else without colliding with a real media
+// code. The firmware decodes them in media_code_to_keycode().
+export const WHEEL_KEYS = [
+  { code: 0xf0, label: '휠 ↑' },
+  { code: 0xf1, label: '휠 ↓' },
+  { code: 0xf2, label: '휠 ←' },
+  { code: 0xf3, label: '휠 →' },
+];
+
 export const MEDIA_KEYS = [
   { code: 0x80, label: 'Vol +' },
   { code: 0x81, label: 'Vol -' },
@@ -169,8 +180,11 @@ export function findBaseKeyLabel(code) {
   return found ? found.label : `0x${code.toString(16).toUpperCase()}`;
 }
 
+// Wheel codes share the media flag, so both tables are searched here --
+// otherwise a wheel key shows on the keycap as a raw media code.
 export function findMediaLabel(code) {
-  const found = MEDIA_KEYS.find((k) => k.code === code);
+  const found =
+    MEDIA_KEYS.find((k) => k.code === code) ?? WHEEL_KEYS.find((k) => k.code === code);
   return found ? found.label : `MEDIA 0x${code.toString(16).toUpperCase()}`;
 }
 

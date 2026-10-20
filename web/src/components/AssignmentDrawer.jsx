@@ -8,6 +8,7 @@ import {
   PUNCT_KEYS,
   NAV_KEYS,
   MEDIA_KEYS,
+  WHEEL_KEYS,
   MACRO_PRESETS,
   MOD_LABELS,
   MOD_BITS,
@@ -386,7 +387,7 @@ export default function AssignmentDrawer() {
                       </KeyButton>
                     ))}
                   {tab === 'media' &&
-                    MEDIA_KEYS.map((k) => (
+                    [...MEDIA_KEYS, ...WHEEL_KEYS].map((k) => (
                       <KeyButton key={k.code} span={4} onClick={() => pickMedia(k.code)}>
                         {k.label}
                       </KeyButton>
