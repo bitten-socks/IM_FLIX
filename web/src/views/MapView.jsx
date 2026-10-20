@@ -3,6 +3,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import KeypadHero from '../components/KeypadHero';
 import AssignmentDrawer from '../components/AssignmentDrawer';
 import StatusBar from '../components/StatusBar';
+import ConfirmBar from '../components/ConfirmBar';
 import DiagnosticPanel from '../components/DiagnosticPanel';
 import FadeIn from '../components/FadeIn';
 import { useFlixStore } from '../store/useFlixStore';
@@ -79,11 +80,13 @@ export default function MapView() {
             )}
           </div>
 
+          <ConfirmBar />
+
           <StatusBar />
           <DiagnosticPanel />
 
           <p className="text-center text-xs text-white/30">
-            키캡을 클릭하면 오른쪽에서 설정합니다 · 저장 버튼 없이 즉시 반영됩니다
+            키캡을 클릭하면 오른쪽에서 설정합니다 · 설정은 기기 안에 저장돼요
           </p>
         </main>
       </div>
