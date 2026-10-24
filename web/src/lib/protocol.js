@@ -54,6 +54,12 @@ export const KEY_DETAIL_CHUNKS = Math.ceil(MAX_MACRO_STEPS / STEPS_PER_CHUNK);
 // looks like it worked while the part that matters never happens.
 export const MIN_PROTOCOL_VERSION = 9;
 
+// Pointer codes -- the button and the four directions a swipe is built from
+// -- arrived in 10. This is not a floor like the one above: everything else
+// still works on 9, so the swipe roles are withheld rather than the device
+// being refused.
+export const POINTER_PROTOCOL_VERSION = 10;
+
 // Firmware clamps every step's timing into this range.
 export const MIN_STEP_MS = 1;
 export const MAX_STEP_MS = 5000;

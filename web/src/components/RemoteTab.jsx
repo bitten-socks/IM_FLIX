@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
+import { POINTER_PROTOCOL_VERSION } from '../lib/protocol';
 import {
   REMOTE_ROLES,
   SWIPE_ROLES,
@@ -72,6 +73,11 @@ export default function RemoteTab({ keyIndex }) {
   const assignKey = useFlixStore((s) => s.assignKey);
   const assignKeys = useFlixStore((s) => s.assignKeys);
   const programMacro = useFlixStore((s) => s.programMacro);
+  const identity = useFlixStore((s) => s.identity);
+
+  // An older build answers the write and then drops the pointer codes, which
+  // looks exactly like a swipe that does not work. Say so instead.
+  const canSwipe = (identity?.protocolVersion ?? 0) >= POINTER_PROTOCOL_VERSION;
   const [applied, setApplied] = useState(false);
 
   const layout = layoutFor(product.keyCount);
@@ -139,15 +145,24 @@ export default function RemoteTab({ keyIndex }) {
                 쇼츠 · 릴스 · 틱톡 · 아이폰은 AssistiveTouch를 켜야 합니다
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(SWIPE_ROLES).map(([id, role]) => (
-                <RoleButton key={id} role={role} onClick={() => pickSwipe(role)} />
-              ))}
-            </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-white/25">
-              세로 피드는 휠로는 넘어가지 않습니다. 쓸어올리는 동작을 그대로 흉내 내므로,
-              잘 안 넘어가면 고급 탭에서 누르는 시간을 늘려 더 길게 쓸어올리세요.
-            </p>
+            {canSwipe ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(SWIPE_ROLES).map(([id, role]) => (
+                    <RoleButton key={id} role={role} onClick={() => pickSwipe(role)} />
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-white/25">
+                  세로 피드는 휠로는 넘어가지 않습니다. 쓸어올리는 동작을 그대로 흉내 내므로,
+                  잘 안 넘어가면 고급 탭에서 누르는 시간을 늘려 더 길게 쓸어올리세요.
+                </p>
+              </>
+            ) : (
+              <p className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3.5 py-3 text-[12px] leading-relaxed text-amber-200/75">
+                이 기기의 펌웨어는 쓸어올리기를 아직 모릅니다. 지정해도 아무 일도 일어나지
+                않으므로 버튼을 내려두었습니다.
+              </p>
+            )}
           </div>
 
           {rolesByScope().map(({ scope, meta, roles }) => (
