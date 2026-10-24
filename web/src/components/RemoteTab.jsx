@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
-import { REMOTE_ROLES, layoutAssignments, layoutFor, rolesByScope } from '../lib/remote';
+import {
+  REMOTE_ROLES,
+  SWIPE_ROLES,
+  layoutAssignments,
+  layoutFor,
+  rolesByScope,
+} from '../lib/remote';
 
 // Setting the device up for a phone or tablet.
 //
@@ -65,6 +71,7 @@ export default function RemoteTab({ keyIndex }) {
   const product = useFlixStore((s) => s.product);
   const assignKey = useFlixStore((s) => s.assignKey);
   const assignKeys = useFlixStore((s) => s.assignKeys);
+  const programMacro = useFlixStore((s) => s.programMacro);
   const [applied, setApplied] = useState(false);
 
   const layout = layoutFor(product.keyCount);
@@ -77,6 +84,10 @@ export default function RemoteTab({ keyIndex }) {
 
   const pick = (role) =>
     assignKey({ mod: role.mod ?? 0, code: role.code, isMedia: role.isMedia });
+
+  // A swipe is two keys held together, so it is written as a macro rather
+  // than assigned as one keycode like everything else on this tab.
+  const pickSwipe = (role) => programMacro(keyIndex, role.steps);
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,6 +132,24 @@ export default function RemoteTab({ keyIndex }) {
         </p>
 
         <div className="flex flex-col gap-5">
+          <div>
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="text-xs font-bold text-violet-300">세로 피드</span>
+              <span className="text-[11px] text-white/25">
+                쇼츠 · 릴스 · 틱톡 · 아이폰은 AssistiveTouch를 켜야 합니다
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(SWIPE_ROLES).map(([id, role]) => (
+                <RoleButton key={id} role={role} onClick={() => pickSwipe(role)} />
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-white/25">
+              세로 피드는 휠로는 넘어가지 않습니다. 쓸어올리는 동작을 그대로 흉내 내므로,
+              잘 안 넘어가면 고급 탭에서 누르는 시간을 늘려 더 길게 쓸어올리세요.
+            </p>
+          </div>
+
           {rolesByScope().map(({ scope, meta, roles }) => (
             <div key={scope}>
               <div className="mb-2 flex items-baseline gap-2">

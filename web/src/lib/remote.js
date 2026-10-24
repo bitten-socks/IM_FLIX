@@ -40,6 +40,24 @@ export const SCOPES = {
   edit: { label: '편집', tone: 'text-sky-300', why: '기기에 맞는 쪽을 고르세요' },
 };
 
+// A swipe, which is the only thing a vertical feed answers to. Shorts and
+// Reels are pagers: they take a touch drag and ignore the wheel, which is why
+// every other scroll role moves them not at all. One chord group -- the
+// button held while the pointer runs -- is a press, a drag and a release, and
+// the hold decides how far it travels.
+//
+// These write a macro rather than a single key, so they are kept apart from
+// REMOTE_ROLES, whose entries are all one keycode each.
+const swipe = (direction, holdMs) => [
+  { mod: 0, code: 0xf4, isMedia: 1, chord: 1, sustain: 0, onRelease: 0, holdMs, gapMs: 20 },
+  { mod: 0, code: direction, isMedia: 1, chord: 0, sustain: 0, onRelease: 0, holdMs, gapMs: 20 },
+];
+
+export const SWIPE_ROLES = {
+  feedNext: { label: '다음 쇼츠 · 릴스', note: '화면을 위로 쓸어올립니다', steps: swipe(0xf5, 320) },
+  feedPrev: { label: '이전 쇼츠 · 릴스', note: '화면을 아래로 쓸어내립니다', steps: swipe(0xf6, 320) },
+};
+
 export const REMOTE_ROLES = {
   playpause: { label: '재생 / 일시정지', code: 0xe8, isMedia: 1, scope: 'os' },
   volup: { label: '볼륨 +', code: 0x80, isMedia: 1, scope: 'os' },

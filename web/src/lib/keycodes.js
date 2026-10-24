@@ -149,6 +149,17 @@ export const WHEEL_KEYS = [
   { code: 0xf3, label: '휠 →' },
 ];
 
+// The button and the four directions. On their own they are not much use --
+// nobody aims a pointer with a six-key pad -- but a button held while a
+// direction moves is a drag, and a drag is a swipe.
+export const POINTER_KEYS = [
+  { code: 0xf4, label: '왼쪽 클릭' },
+  { code: 0xf5, label: '포인터 ↑' },
+  { code: 0xf6, label: '포인터 ↓' },
+  { code: 0xf7, label: '포인터 ←' },
+  { code: 0xf8, label: '포인터 →' },
+];
+
 export const MEDIA_KEYS = [
   { code: 0x80, label: 'Vol +' },
   { code: 0x81, label: 'Vol -' },
@@ -186,7 +197,9 @@ export function findBaseKeyLabel(code) {
 // otherwise a wheel key shows on the keycap as a raw media code.
 export function findMediaLabel(code) {
   const found =
-    MEDIA_KEYS.find((k) => k.code === code) ?? WHEEL_KEYS.find((k) => k.code === code);
+    MEDIA_KEYS.find((k) => k.code === code) ??
+    WHEEL_KEYS.find((k) => k.code === code) ??
+    POINTER_KEYS.find((k) => k.code === code);
   return found ? found.label : `MEDIA 0x${code.toString(16).toUpperCase()}`;
 }
 
