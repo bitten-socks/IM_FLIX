@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
 import { POINTER_PROTOCOL_VERSION } from '../lib/protocol';
+
+const SWIPE_KEY = 'flix.swipeMs';
 import {
   REMOTE_ROLES,
   SWIPE_ROLES,
+  SWIPE_DEFAULT_MS,
+  SWIPE_MAX_MS,
+  SWIPE_MIN_MS,
   layoutAssignments,
   layoutFor,
   rolesByScope,
+  swipeSteps,
 } from '../lib/remote';
 
 // Setting the device up for a phone or tablet.
@@ -78,6 +84,29 @@ export default function RemoteTab({ keyIndex }) {
   // An older build answers the write and then drops the pointer codes, which
   // looks exactly like a swipe that does not work. Say so instead.
   const canSwipe = (identity?.protocolVersion ?? 0) >= POINTER_PROTOCOL_VERSION;
+
+  // How far the swipe drags, kept here rather than in the step editor: it is
+  // the one part of the gesture that has to be found by trying it, since the
+  // right amount depends on the screen it lands on. Remembered so it is found
+  // once, not once per key.
+  const [swipeMs, setSwipeMs] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(SWIPE_KEY));
+      if (saved >= SWIPE_MIN_MS && saved <= SWIPE_MAX_MS) return saved;
+    } catch {
+      // Private windows and blocked storage: the default is fine.
+    }
+    return SWIPE_DEFAULT_MS;
+  });
+
+  const changeSwipe = (value) => {
+    setSwipeMs(value);
+    try {
+      localStorage.setItem(SWIPE_KEY, String(value));
+    } catch {
+      // Not worth failing the setting over.
+    }
+  };
   const [applied, setApplied] = useState(false);
 
   const layout = layoutFor(product.keyCount);
@@ -93,7 +122,7 @@ export default function RemoteTab({ keyIndex }) {
 
   // A swipe is two keys held together, so it is written as a macro rather
   // than assigned as one keycode like everything else on this tab.
-  const pickSwipe = (role) => programMacro(keyIndex, role.steps);
+  const pickSwipe = (role) => programMacro(keyIndex, swipeSteps(role.toward, swipeMs));
 
   return (
     <div className="flex flex-col gap-6">
@@ -152,9 +181,29 @@ export default function RemoteTab({ keyIndex }) {
                     <RoleButton key={id} role={role} onClick={() => pickSwipe(role)} />
                   ))}
                 </div>
+
+                <div className="mt-2.5 rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-semibold text-white/70">쓸어올리는 양</span>
+                    <span className="font-mono text-[13px] text-cyan-300">{swipeMs}ms</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={SWIPE_MIN_MS}
+                    max={SWIPE_MAX_MS}
+                    value={swipeMs}
+                    onChange={(e) => changeSwipe(Number(e.target.value))}
+                    className="mt-2 w-full"
+                  />
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/30">
+                    화면 크기에 따라 다릅니다. <b className="text-white/50">안 넘어가면 늘리고</b>,
+                    <b className="text-white/50"> 두 개씩 넘어가면 줄이세요.</b> 바꾼 뒤 위 버튼을
+                    다시 눌러야 기기에 들어갑니다.
+                  </p>
+                </div>
+
                 <p className="mt-1.5 text-[11px] leading-relaxed text-white/25">
-                  세로 피드는 휠로는 넘어가지 않습니다. 쓸어올리는 동작을 그대로 흉내 내므로,
-                  잘 안 넘어가면 고급 탭에서 누르는 시간을 늘려 더 길게 쓸어올리세요.
+                  세로 피드는 휠로는 넘어가지 않습니다. 쓸어올리는 동작을 그대로 흉내 냅니다.
                 </p>
               </>
             ) : (

@@ -66,40 +66,34 @@ const pointerStep = (code, holdMs, chord = 0) => ({
 // along the top. Only then does the button go down.
 //
 // The pointer crosses a whole screen in a fraction of a second, so these are
-// much shorter than they look: STEP_IN and DRAG are tens of milliseconds of
-// travel, not hundreds. If a drag lands short or long on a given screen, it is
-// those two to adjust -- PARK only has to be more than enough.
-//
-// The two are not independent. STEP_IN decides where the drag begins, and so
-// how much screen is left to travel: starting halfway up left only half a
-// screen to drag through, which went by too quickly for the feed to read as a
-// flick. Beginning low leaves the whole screen, and the drag is given the time
-// to cross it -- a gesture is recognised from the path it traces, so a longer
-// one over more milliseconds is easier to catch than a shorter, faster one.
+// much shorter than they look -- tens of milliseconds of travel, not hundreds.
+// PARK only has to be more than enough; STEP_IN decides where the drag begins,
+// and so how much screen is left to cross.
 const PARK_MS = 500;
 const STEP_IN_MS = 35;
-const DRAG_MS = 140;
 
-const swipe = (toward) => {
+// How long the button is held and dragged, which is the whole of how far the
+// swipe travels. It is the one number that does not survive the move from one
+// phone to another -- screens differ in height, and a feed decides for itself
+// how much of one counts as a flick -- so it is set where the roles are
+// chosen rather than buried in the step editor.
+export const SWIPE_DEFAULT_MS = 56;
+export const SWIPE_MIN_MS = 10;
+export const SWIPE_MAX_MS = 300;
+
+export function swipeSteps(toward, dragMs = SWIPE_DEFAULT_MS) {
+  const hold = Math.min(SWIPE_MAX_MS, Math.max(SWIPE_MIN_MS, Math.round(dragMs)));
   const backward = toward === POINTER.up ? POINTER.down : POINTER.up;
   return [
     pointerStep(backward, PARK_MS, 1), pointerStep(POINTER.left, PARK_MS),
     pointerStep(toward, STEP_IN_MS, 1), pointerStep(POINTER.right, STEP_IN_MS),
-    pointerStep(POINTER.button, DRAG_MS, 1), pointerStep(toward, DRAG_MS),
+    pointerStep(POINTER.button, hold, 1), pointerStep(toward, hold),
   ];
-};
+}
 
 export const SWIPE_ROLES = {
-  feedNext: {
-    label: '다음 쇼츠 · 릴스',
-    note: '자리를 잡고 위로 쓸어올립니다',
-    steps: swipe(POINTER.up),
-  },
-  feedPrev: {
-    label: '이전 쇼츠 · 릴스',
-    note: '자리를 잡고 아래로 쓸어내립니다',
-    steps: swipe(POINTER.down),
-  },
+  feedNext: { label: '다음 쇼츠 · 릴스', note: '자리를 잡고 위로 쓸어올립니다', toward: POINTER.up },
+  feedPrev: { label: '이전 쇼츠 · 릴스', note: '자리를 잡고 아래로 쓸어내립니다', toward: POINTER.down },
 };
 
 export const REMOTE_ROLES = {
