@@ -263,12 +263,16 @@ export function macroDurationMs(steps, stepCount) {
   }, 0);
 }
 
-// Visual stand-ins for the two waits a user never sets directly: how far a
-// sustained key is drawn past its group to show it is still down, and the
-// beat between letting go and the release phase starting. The firmware's own
-// handover is handover_ms(); these exist so a drawing can show the shape.
+// How far a sustained key is drawn past its group to show it is still down.
+// A hold that follows the finger has no set length, so the drawing needs some
+// figure; this one is only ever a picture.
 export const HOLD_TAIL_MS = 260;
-export const LIFT_GAP_MS = 220;
+
+// Floor on the wait between the finger lifting and the release phase, matching
+// MIN_HANDOVER_MS in the firmware. Above it the wait is the gap on the last
+// step before the lift, which is a setting like any other -- so a preview that
+// used a constant here was showing a sequence nobody had asked for.
+export const MIN_HANDOVER_MS = 24;
 
 // Where every step sits in time. chordGroups() says which steps fire
 // together; this says when, which is what a preview needs to show the shape
@@ -323,8 +327,13 @@ export function macroTimeline(steps, stepCount = steps.length) {
   // to it. Without one, the lift is simply where the press phase ended.
   const liftAt = sustainedPress ? pressEnd + HOLD_TAIL_MS : pressEnd;
 
+  // The firmware waits out the gap belonging to the last step it played
+  // before the lift, never less than MIN_HANDOVER_MS.
+  const handover = releaseIndex > 0
+    ? Math.max(MIN_HANDOVER_MS, steps[releaseIndex - 1].gapMs)
+    : MIN_HANDOVER_MS;
   const releaseEnd = releaseGroups.length
-    ? lay(releaseGroups, liftAt + LIFT_GAP_MS, 'release')
+    ? lay(releaseGroups, liftAt + handover, 'release')
     : liftAt;
 
   spans.forEach((span) => {
