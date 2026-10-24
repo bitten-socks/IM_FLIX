@@ -41,7 +41,11 @@ export const SCOPES = {
   },
   app: { label: '앱에 따라', tone: 'text-amber-300', why: '앱이 키보드 입력을 받을 때 동작합니다' },
   edit: { label: '편집', tone: 'text-sky-300', why: '기기에 맞는 쪽을 고르세요' },
-  youtube: { label: '유튜브', tone: 'text-white/40', why: '유튜브의 정식 단축키입니다' },
+  youtube: {
+    label: '유튜브 (브라우저)',
+    tone: 'text-white/40',
+    why: '브라우저로 볼 때만 동작합니다 · 폰·태블릿의 유튜브 앱에서는 동작하지 않습니다',
+  },
 };
 
 export const REMOTE_ROLES = {
@@ -49,11 +53,14 @@ export const REMOTE_ROLES = {
   volup: { label: '볼륨 +', code: 0x80, isMedia: 1, scope: 'os' },
   voldown: { label: '볼륨 −', code: 0x81, isMedia: 1, scope: 'os' },
   mute: { label: '음소거', code: 0x82, isMedia: 1, scope: 'os' },
-  prev: { label: '이전 트랙', code: 0xe9, isMedia: 1, scope: 'os' },
-  next: { label: '다음 트랙', code: 0xea, isMedia: 1, scope: 'os' },
+  // 0xE9/0xEA are NEXT/PREV in media_code_to_keycode(); keep them that way
+  // round. Reversed, the role sent the opposite track AND the keycap showed
+  // the opposite label, which looked like two separate faults.
+  prev: { label: '이전 트랙', code: 0xea, isMedia: 1, scope: 'os' },
+  next: { label: '다음 트랙', code: 0xe9, isMedia: 1, scope: 'os' },
 
-  seekback: { label: '뒤로 감기', note: '←', code: 0x50, isMedia: 0, scope: 'app' },
-  seekfwd: { label: '앞으로 감기', note: '→', code: 0x4f, isMedia: 0, scope: 'app' },
+  seekback: { label: '뒤로 감기', note: '← · 앱에서도 이쪽이 동작합니다', code: 0x50, isMedia: 0, scope: 'app' },
+  seekfwd: { label: '앞으로 감기', note: '→ · 앱에서도 이쪽이 동작합니다', code: 0x4f, isMedia: 0, scope: 'app' },
   wheeldown: { label: '스크롤 ↓', note: '마우스 휠 · 누르면 계속', code: 0xf1, isMedia: 1, scope: 'wheel' },
   wheelup: { label: '스크롤 ↑', note: '마우스 휠 · 누르면 계속', code: 0xf0, isMedia: 1, scope: 'wheel' },
 
@@ -88,7 +95,9 @@ export const REMOTE_LAYOUTS = {
   9: [
     'seekback', 'playpause', 'seekfwd',
     'voldown', 'mute', 'volup',
-    'prev', 'fullscreen', 'next',
+    // Scrolling beats 전체화면 here: the wheel reaches most apps, while F
+    // only ever worked in a browser tab.
+    'prev', 'wheeldown', 'next',
   ],
 };
 
