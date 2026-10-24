@@ -58,12 +58,27 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   const addRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // The gesture this tab cleared on the way in, if it did, so it can say so.
+  const [clearedSwipe, setClearedSwipe] = useState(null);
 
   // Start from what the device already holds, so the tab edits the real
   // sequence rather than silently replacing it with a blank one.
   useEffect(() => {
     if (!detail) return;
-    if (detail.mode === KEY_MODE.MACRO && detail.stepCount > 0) {
+    const gesture =
+      detail.mode === KEY_MODE.MACRO && detail.stepCount > 0
+        ? describeSwipe(detail.steps, detail.stepCount)
+        : null;
+    setClearedSwipe(gesture);
+
+    if (gesture) {
+      // A gesture is six pointer steps that only mean anything together, so
+      // there is nothing to hand over to the editor. The slate is wiped and
+      // the key is free to become a macro -- on the device it is still the
+      // gesture until this tab is saved, so leaving without saving costs
+      // nothing.
+      setSteps([]);
+    } else if (detail.mode === KEY_MODE.MACRO && detail.stepCount > 0) {
       setSteps(
         detail.steps.slice(0, detail.stepCount).map((s) => ({
           mod: s.mod,
@@ -238,28 +253,6 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
 
-  // A gesture is six pointer steps whose every number is load-bearing: where
-  // the pointer parks, how far it comes off the edge, how long the drag runs.
-  // Opening that as an editable sequence invites it to be taken apart by hand,
-  // and the one number worth changing has its own control on the phone tab. So
-  // the key says what it holds and sends you there.
-  const swipe = describeSwipe(steps, steps.length);
-  if (swipe) {
-    return (
-      <div className="flex flex-col gap-3 rounded-xl border border-violet-400/25 bg-violet-500/[0.07] px-4 py-4">
-        <p className="text-[15px] font-bold text-violet-200">{swipe}</p>
-        <p className="text-[13px] leading-relaxed text-white/50">
-          이 키에는 화면을 쓸어넘기는 동작이 들어 있습니다. 포인터가 자리를 잡고 끄는 여섯
-          단계가 맞물려 있어 여기서는 고치지 않습니다.
-        </p>
-        <p className="text-[13px] leading-relaxed text-white/35">
-          넘기는 양은 <b className="text-white/60">기본 → 모바일</b> 탭에서 조절합니다. 이 키를
-          다른 용도로 쓰시려면 거기서 다른 기능을 고르거나, 위의 다른 탭에서 키를 지정하세요.
-        </p>
-      </div>
-    );
-  }
-
   // Side by side, each column scrolls on its own rather than the panel
   // scrolling as one piece. That is what keeps the preview on screen while a
   // long list of steps is worked through: with one shared scrollbar the
@@ -267,6 +260,13 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   return (
     <div className="flex flex-col gap-5 xl:h-full xl:min-h-0 xl:flex-row xl:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-5 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
+      {clearedSwipe && !saved && (
+        <p className="rounded-xl border border-violet-400/25 bg-violet-500/[0.07] px-4 py-3.5 text-[13px] leading-relaxed text-violet-100/80">
+          이 키에 있던 <b>{clearedSwipe}</b> 를 비우고 새로 만듭니다. 저장하기 전까지 기기에는
+          그대로 남아 있으니, 되돌리려면 저장하지 말고{' '}
+          <b className="text-white/70">기본 → 모바일</b> 에서 다시 고르세요.
+        </p>
+      )}
       <Summary groups={groups} labels={labels} />
 
       {steps.length > 0 && (
