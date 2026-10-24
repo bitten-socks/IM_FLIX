@@ -45,6 +45,11 @@ export const useFlixStore = create((set, get) => ({
   // lazily -- the compact keymap dump covers the keycap row on its own.
   keyDetails: {},
   selectedKey: null,
+  // The step editor needs the panel wide enough to put the preview beside the
+  // steps. The panel reserves its own column on large screens, so the page has
+  // to widen with it rather than be covered by it.
+  wideDrawer: false,
+  setWideDrawer: (wide) => set({ wideDrawer: wide }),
   lastSync: null,
   lastPing: null,
   matrixState: null,

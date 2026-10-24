@@ -240,8 +240,13 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
 
+  // Side by side, each column scrolls on its own rather than the panel
+  // scrolling as one piece. That is what keeps the preview on screen while a
+  // long list of steps is worked through: with one shared scrollbar the
+  // drawing being adjusted was the first thing to leave.
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 xl:h-full xl:min-h-0 xl:flex-row xl:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
       <Summary groups={groups} labels={labels} />
 
       {steps.length > 0 && (
@@ -438,6 +443,18 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           : `＋ 키 추가 (${steps.length}/${MAX_MACRO_STEPS})`}
       </button>
 
+      </div>
+
+      <div className="flex flex-col gap-5 xl:min-h-0 xl:w-[23rem] xl:shrink-0 xl:overflow-y-auto">
+      {/* The preview sticks, not the column around it: with the dials and the
+          save button below, the column is taller than the panel, so pinning
+          the whole thing just carried the drawing off the top again. */}
+      {steps.length > 0 && (
+        <div className="xl:sticky xl:top-0 xl:z-10 xl:bg-[#15171c] xl:pb-3 xl:pt-2">
+          <MacroPreview steps={steps} labels={labels} />
+        </div>
+      )}
+
       {steps.length > 0 && (
         <div>
           <p className="mb-2 text-[13px] font-semibold text-white/70">입력 속도</p>
@@ -491,8 +508,6 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
         </div>
       )}
 
-      {steps.length > 0 && <MacroPreview steps={steps} labels={labels} />}
-
       <button
         onClick={save}
         disabled={!steps.length || saving}
@@ -505,6 +520,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
         키를 실제로 얼마나 오래 누르든 여기서 정한 시간만큼만 입력됩니다. 길게 눌러 다른
         동작이 나가는 것을 막아줍니다.
       </p>
+      </div>
     </div>
   );
 }

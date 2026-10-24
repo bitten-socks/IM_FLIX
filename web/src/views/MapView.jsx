@@ -41,7 +41,8 @@ function CableNotice({ emphasised }) {
 }
 
 export default function MapView() {
-  const { connected, connect, connecting, supported, product, noDevicePicked } = useFlixStore();
+  const { connected, connect, connecting, supported, product, noDevicePicked, wideDrawer } =
+    useFlixStore();
 
   return (
     <>
@@ -49,7 +50,8 @@ export default function MapView() {
       <ErrorBanner />
 
       <FadeIn>
-      <div className="xl:pr-[28rem]">
+      {/* Paired with the panel width in AssignmentDrawer. */}
+      <div className={wideDrawer ? 'xl:pr-[min(880px,62vw)]' : 'xl:pr-[28rem]'}>
         <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
           {/* Before a device is chosen the keypad is empty, leaving the
               panel shorter than the notice that sits over it -- which clipped

@@ -222,8 +222,10 @@ export default function AssignmentDrawer() {
   const [basicTab, setBasicTab] = useState('custom');
   const [advancedTab, setAdvancedTab] = useState('timing');
   const [activeMods, setActiveMods] = useState(0);
-  const { selectedKey, keymap, keyDetails, assignKey, closeAssignment, loadKeyDetail, programMacro } =
-    useFlixStore();
+  const {
+    selectedKey, keymap, keyDetails, assignKey, closeAssignment, loadKeyDetail, programMacro,
+    setWideDrawer,
+  } = useFlixStore();
   const open = selectedKey !== null;
   const detail = selectedKey === null ? null : keyDetails[selectedKey];
 
@@ -239,6 +241,13 @@ export default function AssignmentDrawer() {
   const pickMacro = (p) => assignKey({ mod: p.mod, code: p.code, isMedia: p.isMedia });
 
   const tab = mode === 'basic' ? basicTab : advancedTab;
+
+  // Only the step editor earns the wider panel; the other tabs are grids of
+  // keys that gain nothing from the room. It goes through the store because
+  // MapView reserves the matching column, and the two widths must not drift
+  // -- each side spells out the same value with a note pointing at the other.
+  const wide = open && tab === 'timing';
+  useEffect(() => setWideDrawer(wide), [wide, setWideDrawer]);
 
   // A macro key's real assignment is the whole sequence, which the compact
   // dump cannot express -- show the word instead of just its first letter.
@@ -261,8 +270,11 @@ export default function AssignmentDrawer() {
         }`}
       />
       <aside
-        className={`fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#15171c] shadow-2xl transition-transform duration-200 xl:translate-x-0 ${
+        className={`fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#15171c] shadow-2xl transition-[transform,max-width] duration-200 xl:translate-x-0 ${
           open ? 'translate-x-0' : 'translate-x-full'
+        } ${
+          /* Paired with the padding in MapView. */
+          wide ? 'xl:max-w-[min(880px,62vw)]' : 'xl:max-w-md'
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-5">
