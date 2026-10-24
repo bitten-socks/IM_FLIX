@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { MAX_MACRO_STEPS, MIN_STEP_MS, MAX_STEP_MS, KEY_MODE, chordGroups } from '../lib/protocol';
+import {
+  MAX_MACRO_STEPS,
+  MIN_STEP_MS,
+  MAX_STEP_MS,
+  MIN_HANDOVER_MS,
+  KEY_MODE,
+  chordGroups,
+} from '../lib/protocol';
 import {
   DOM_CODE_TO_HID,
   isModifierDomCode,
@@ -47,7 +54,6 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   const [listening, setListening] = useState(false);
   const [draft, setDraft] = useState('');
   const draftRef = useRef(null);
-  const [showNumbers, setShowNumbers] = useState(false);
   const addRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -143,7 +149,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSteps((prev) =>
       prev.map((s, i) => {
         if (i === index) {
-          return { ...s, onRelease: on ? 1 : 0, chord: on ? 0 : s.chord, sustain: on ? 0 : s.sustain };
+          return { ...s, onRelease: on ? 1 : 0, sustain: on ? 0 : s.sustain };
         }
         return on && i > index ? { ...s, sustain: 0 } : s;
       }),
@@ -209,11 +215,6 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(false);
   };
 
-  const applyToAll = (patch) => {
-    setSteps((prev) => prev.map((s) => ({ ...s, ...patch })));
-    setSaved(false);
-  };
-
   const save = async () => {
     if (!steps.length) return;
     setSaving(true);
@@ -232,10 +233,6 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   const allSustained = pressPhase.length > 0 && pressPhase.every((s) => s.sustain);
   const labels = steps.map((s) => describeKey(s));
   const groups = chordGroups(steps, steps.length);
-  // The sliders speak for the whole sequence, so they show the first step's
-  // value -- which is what they are about to write to every step anyway.
-  const commonHold = steps[0]?.holdMs ?? DEFAULT_HOLD_MS;
-  const commonGap = steps[0]?.gapMs ?? DEFAULT_GAP_MS;
   const activeSpeed = SPEEDS.find(
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
@@ -309,7 +306,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   </button>
                 )}
 
-                {!isLast && !step.onRelease && (
+                {!isLast && (
                   <button
                     onClick={() => update(i, { chord: step.chord ? 0 : 1 })}
                     className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
@@ -322,24 +319,24 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   </button>
                 )}
 
-                {showNumbers && (
-                  <div className="mt-2.5 flex flex-wrap items-center gap-3">
-                    {group[0] === i && (
-                      <NumberField
-                        label="누름"
-                        value={step.holdMs}
-                        onChange={(v) => update(i, { holdMs: v })}
-                      />
-                    )}
-                    {group[group.length - 1] === i && !isLast && (
-                      <NumberField
-                        label="다음까지"
-                        value={step.gapMs}
-                        onChange={(v) => update(i, { gapMs: v })}
-                      />
-                    )}
-                  </div>
-                )}
+                <div className="mt-2.5 flex flex-wrap items-center gap-3">
+                  {group[0] === i && (
+                    <NumberField
+                      label="누름"
+                      value={step.holdMs}
+                      onChange={(v) => update(i, { holdMs: v })}
+                    />
+                  )}
+                  {group[group.length - 1] === i && !isLast && (
+                    <NumberField
+                      label={i === releaseAt - 1 ? '손 뗀 뒤' : '다음까지'}
+                      value={step.gapMs}
+                      onChange={(v) => update(i, { gapMs: v })}
+                      min={i === releaseAt - 1 ? MIN_HANDOVER_MS : MIN_STEP_MS}
+                      hint={i === releaseAt - 1 ? '손을 뗀 뒤 이만큼 기다렸다 실행합니다' : null}
+                    />
+                  )}
+                </div>
               </div>
             );
           })}
@@ -455,6 +452,14 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
         </div>
       )}
 
+      <button
+        onClick={save}
+        disabled={!steps.length || saving}
+        className="rounded-xl bg-cyan-500 py-3 text-[15px] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {saving ? '저장 중...' : saved ? '✓ 저장됨' : '이 순서로 저장'}
+      </button>
+
       {steps.length > 0 && (
         <div>
           <p className="mb-2 text-[13px] font-semibold text-white/70">입력 속도</p>
@@ -475,46 +480,12 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <Slider
-              label="누르는 시간"
-              hint="키 하나를 누르고 있는 길이"
-              value={commonHold}
-              onChange={(v) => applyToAll({ holdMs: v })}
-            />
-            <Slider
-              label="다음 키까지 간격"
-              hint="떼고 나서 쉬는 시간"
-              value={commonGap}
-              onChange={(v) => applyToAll({ gapMs: v })}
-            />
-
-            <p className="text-xs leading-relaxed text-white/30">
-              막대는 {SLIDER_MAX_MS}ms까지 움직입니다. 더 길게 누르려면 숫자칸에 직접
-              적으세요 — 최대 {MAX_STEP_MS}ms({MAX_STEP_MS / 1000}초)까지 됩니다.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowNumbers((v) => !v)}
-            className={`mt-3 w-full rounded-xl border py-2.5 text-[13px] font-medium transition ${
-              showNumbers
-                ? 'border-cyan-400/40 bg-cyan-500/10 text-cyan-200'
-                : 'border-white/10 text-white/50 hover:border-white/25 hover:text-white/75'
-            }`}
-          >
-            {showNumbers ? '단계별 조정 닫기' : '단계마다 다르게 설정하기'}
-          </button>
+          <p className="mt-2 text-xs leading-relaxed text-white/30">
+            단계마다 다르게 하려면 각 단계의 숫자칸에 직접 적으세요 — 최대 {MAX_STEP_MS}ms(
+            {MAX_STEP_MS / 1000}초)까지 됩니다.
+          </p>
         </div>
       )}
-
-      <button
-        onClick={save}
-        disabled={!steps.length || saving}
-        className="rounded-xl bg-cyan-500 py-3 text-[15px] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {saving ? '저장 중...' : saved ? '✓ 저장됨' : '이 순서로 저장'}
-      </button>
 
       <p className="text-xs leading-relaxed text-white/25">
         키를 실제로 얼마나 오래 누르든 여기서 정한 시간만큼만 입력됩니다. 길게 눌러 다른
@@ -575,55 +546,29 @@ function IconButton({ children, onClick, label, disabled = false, danger = false
 // same pixel. So the box beside it takes anything longer, and a line under
 // the pair says so -- a value past the end parks the thumb at the far right,
 // which the number beside it corrects.
-const SLIDER_MAX_MS = 300;
+function NumberField({ label, value, onChange, min = MIN_STEP_MS, hint = null }) {
+  const [draft, setDraft] = useState(null);
 
-function Slider({ label, hint, value, onChange }) {
-  const clamp = (v) => Math.min(MAX_STEP_MS, Math.max(MIN_STEP_MS, v));
+  const commit = () => {
+    if (draft === null) return;
+    const n = Number(draft);
+    setDraft(null);
+    onChange(Number.isFinite(n) && draft !== '' ? Math.min(MAX_STEP_MS, Math.max(min, n)) : value);
+  };
 
   return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <span className="text-[13px] text-white/70">{label}</span>
-        <span className="flex items-center gap-1.5">
-          <input
-            type="number"
-            min={MIN_STEP_MS}
-            max={MAX_STEP_MS}
-            value={value}
-            onChange={(e) => onChange(clamp(Number(e.target.value) || MIN_STEP_MS))}
-            aria-label={`${label} (밀리초)`}
-            className="w-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-[13px] text-cyan-300 focus:border-cyan-400 focus:outline-none"
-          />
-          <span className="text-xs text-white/30">ms</span>
-        </span>
-      </div>
-      <input
-        type="range"
-        min={MIN_STEP_MS}
-        max={SLIDER_MAX_MS}
-        value={Math.min(value, SLIDER_MAX_MS)}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-cyan-400"
-      />
-      <p className="mt-0.5 text-xs text-white/25">{hint}</p>
-    </div>
-  );
-}
-
-function NumberField({ label, value, onChange }) {
-  return (
-    <label className="flex items-center gap-2">
+    <label className="flex items-center gap-2" title={hint ?? undefined}>
       <span className="text-xs text-white/40">{label}</span>
       <input
         type="number"
-        min={MIN_STEP_MS}
+        min={min}
         max={MAX_STEP_MS}
-        value={value}
-        onChange={(e) =>
-          onChange(
-            Math.min(MAX_STEP_MS, Math.max(MIN_STEP_MS, Number(e.target.value) || MIN_STEP_MS)),
-          )
-        }
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
         className="w-16 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-[13px] text-cyan-300 focus:border-cyan-400 focus:outline-none"
       />
       <span className="text-xs text-white/25">ms</span>
