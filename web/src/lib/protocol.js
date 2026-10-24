@@ -375,7 +375,20 @@ export function mergeKeyDetailChunk(previous, incoming) {
     mode: incoming.mode,
     stepCount: incoming.stepCount,
     steps,
+    // Which chunks have actually been seen. A reply arrives for every step
+    // written, not just for a read, so a detail can hold one chunk's worth of
+    // a sequence and look finished -- four blanks and the last letter.
+    chunks: (previous?.chunks ?? 0) | (1 << incoming.chunk),
   };
+}
+
+// True once every chunk covering this key's steps has arrived. Anything less
+// is a sequence with holes in it, which must not be shown or counted as read.
+export function detailIsComplete(detail) {
+  if (!detail?.steps) return false;
+  const needed = Math.max(1, Math.ceil((detail.stepCount || 0) / STEPS_PER_CHUNK));
+  const mask = (1 << needed) - 1;
+  return ((detail.chunks ?? 0) & mask) === mask;
 }
 
 export function isPingAck(data) {

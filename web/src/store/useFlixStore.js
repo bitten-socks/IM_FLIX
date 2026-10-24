@@ -21,6 +21,7 @@ import {
   buildIdentifyPacket,
   parseKeyDetailResponse,
   mergeKeyDetailChunk,
+  detailIsComplete,
   isPingAck,
   KEY_MODE,
   KEY_DETAIL_CHUNKS,
@@ -235,7 +236,9 @@ export const useFlixStore = create((set, get) => ({
     const { product } = get();
     for (let i = 0; i < product.keyCount; i++) {
       const { keymap, keyDetails } = get();
-      if (keymap[i]?.mode !== KEY_MODE.MACRO || keyDetails[i]) continue;
+      // Presence is not enough: a write echo leaves one chunk behind, and
+      // skipping on that left the keycap showing the holes.
+      if (keymap[i]?.mode !== KEY_MODE.MACRO || detailIsComplete(keyDetails[i])) continue;
       await get().loadKeyDetail(i);
     }
   },
@@ -299,6 +302,10 @@ export const useFlixStore = create((set, get) => ({
         return { keyDetails, lastSync: Date.now(), error: null };
       });
       await get().refreshKeymap();
+      // The echoes from the writes above are still arriving, and each carries
+      // a single chunk. Read the key back in full so what is held is the whole
+      // sequence rather than whichever chunk landed last.
+      await get().loadKeyDetail(keyIndex);
     } catch (err) {
       set({ error: `매크로 저장 실패: ${err.message}` });
     }

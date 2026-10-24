@@ -1,7 +1,8 @@
 import { useFlixStore } from '../store/useFlixStore';
 import { describeKey, macroGroups, stepsToText } from '../lib/keycodes';
 import { describeSwipe } from '../lib/remote';
-import { KEY_MODE } from '../lib/protocol';
+import { KEY_MODE, detailIsComplete } from '../lib/protocol';
+
 
 // Renders whichever model is connected. Products that have a case drawing get
 // clickable hotspots positioned over it; ones that don't yet fall back to a
@@ -19,7 +20,9 @@ function KeyLabel({ entry, detail }) {
   if (entry?.mode === KEY_MODE.MACRO) {
     // ...except a gesture, which is a macro only in how the firmware plays
     // it. It was chosen as one button and reads as one here.
-    const swipe = detail?.steps ? describeSwipe(detail.steps, detail.stepCount) : null;
+    const swipe = detailIsComplete(detail)
+      ? describeSwipe(detail.steps, detail.stepCount)
+      : null;
     if (swipe) {
       return (
         <span className="max-w-full break-keep rounded bg-violet-400 px-1 py-0.5 text-center text-[9px] font-bold leading-tight text-slate-950">
@@ -48,8 +51,9 @@ function MacroList({ keymap, keyDetails, product, selectedKey, onSelect, connect
     if (keymap[i]?.mode !== KEY_MODE.MACRO) continue;
     const detail = keyDetails[i];
     // Gestures are not sequences anyone needs reading back to them.
-    if (detail?.steps && describeSwipe(detail.steps, detail.stepCount)) continue;
-    const text = detail?.steps
+    const ready = detailIsComplete(detail);
+    if (ready && describeSwipe(detail.steps, detail.stepCount)) continue;
+    const text = ready
       ? stepsToText(detail.steps, detail.stepCount) ??
         macroGroups(detail.steps, detail.stepCount).join(' → ')
       : '읽는 중…';
