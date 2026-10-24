@@ -1,5 +1,6 @@
 import { useFlixStore } from '../store/useFlixStore';
 import { describeKey, macroGroups, stepsToText } from '../lib/keycodes';
+import { describeSwipe } from '../lib/remote';
 import { KEY_MODE } from '../lib/protocol';
 
 // Renders whichever model is connected. Products that have a case drawing get
@@ -10,12 +11,22 @@ import { KEY_MODE } from '../lib/protocol';
 // The case renders are near-black, so anything drawn over a keycap has to
 // bring its own contrast. A dark chip with white text -- fine on the page
 // background -- disappears against the product itself.
-function KeyLabel({ entry }) {
+function KeyLabel({ entry, detail }) {
   // Just the badge for a macro. A key opening is about 86px square, so a
   // sequence written across it wrapped into a block of tiny text that fought
   // the case render behind it; the sequences are listed under the keypad
   // instead, where there is a line's width to say them in.
   if (entry?.mode === KEY_MODE.MACRO) {
+    // ...except a gesture, which is a macro only in how the firmware plays
+    // it. It was chosen as one button and reads as one here.
+    const swipe = detail?.steps ? describeSwipe(detail.steps, detail.stepCount) : null;
+    if (swipe) {
+      return (
+        <span className="max-w-full break-keep rounded bg-violet-400 px-1 py-0.5 text-center text-[9px] font-bold leading-tight text-slate-950">
+          {swipe}
+        </span>
+      );
+    }
     return (
       <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
         MACRO
@@ -36,6 +47,8 @@ function MacroList({ keymap, keyDetails, product, selectedKey, onSelect, connect
   for (let i = 0; i < product.keyCount; i++) {
     if (keymap[i]?.mode !== KEY_MODE.MACRO) continue;
     const detail = keyDetails[i];
+    // Gestures are not sequences anyone needs reading back to them.
+    if (detail?.steps && describeSwipe(detail.steps, detail.stepCount)) continue;
     const text = detail?.steps
       ? stepsToText(detail.steps, detail.stepCount) ??
         macroGroups(detail.steps, detail.stepCount).join(' → ')
@@ -107,7 +120,7 @@ export default function KeypadHero() {
                 <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   K{index + 1}
                 </span>
-                <KeyLabel entry={keymap[index]} />
+                <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
               </button>
             );
           })}
@@ -127,7 +140,7 @@ export default function KeypadHero() {
             className={`flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
           >
             <span className="text-[10px] font-medium text-white/50">K{index + 1}</span>
-            <KeyLabel entry={keymap[index]} />
+            <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
           </button>
         ))}
       </div>

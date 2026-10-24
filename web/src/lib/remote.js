@@ -91,6 +91,26 @@ export function swipeSteps(toward, dragMs = SWIPE_DEFAULT_MS) {
   ];
 }
 
+// A gesture is a macro only in the sense that the firmware plays it as one.
+// To the person who set it, it is a single button -- "다음 쇼츠" -- and showing
+// them six pointer steps invites them to edit a sequence whose every number
+// is load-bearing. So it is recognised by its parts and named back: the only
+// steps in the pointer range belong to one of these, because nothing else
+// writes them.
+export function describeSwipe(steps, stepCount) {
+  const used = (steps ?? []).slice(0, stepCount ?? 0);
+  if (!used.length) return null;
+  const codes = used.map((s) => (s.isMedia ? s.code : -1));
+  if (!codes.every((c) => c >= POINTER.button && c <= POINTER.right)) return null;
+
+  // The drag is the group the button opens; its direction is what the gesture
+  // is for, and it is the only up/down that matters.
+  const at = codes.indexOf(POINTER.button);
+  const toward = at === -1 ? null : codes[at + 1];
+  const role = Object.values(SWIPE_ROLES).find((r) => r.toward === toward);
+  return role ? role.label : '화면 쓸기';
+}
+
 export const SWIPE_ROLES = {
   feedNext: { label: '다음 쇼츠 · 릴스', note: '자리를 잡고 위로 쓸어올립니다', toward: POINTER.up },
   feedPrev: { label: '이전 쇼츠 · 릴스', note: '자리를 잡고 아래로 쓸어내립니다', toward: POINTER.down },

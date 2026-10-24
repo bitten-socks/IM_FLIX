@@ -16,6 +16,7 @@ import {
   MACRO_KEY_TOKENS,
 } from '../lib/keycodes';
 import MacroPreview from './MacroPreview';
+import { describeSwipe } from '../lib/remote';
 import { useCaptureGuard } from './AssignmentDrawer';
 
 // The whole sequence editor: what the key sends, in what order, and with what
@@ -237,6 +238,28 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
 
+  // A gesture is six pointer steps whose every number is load-bearing: where
+  // the pointer parks, how far it comes off the edge, how long the drag runs.
+  // Opening that as an editable sequence invites it to be taken apart by hand,
+  // and the one number worth changing has its own control on the phone tab. So
+  // the key says what it holds and sends you there.
+  const swipe = describeSwipe(steps, steps.length);
+  if (swipe) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-violet-400/25 bg-violet-500/[0.07] px-4 py-4">
+        <p className="text-[15px] font-bold text-violet-200">{swipe}</p>
+        <p className="text-[13px] leading-relaxed text-white/50">
+          이 키에는 화면을 쓸어넘기는 동작이 들어 있습니다. 포인터가 자리를 잡고 끄는 여섯
+          단계가 맞물려 있어 여기서는 고치지 않습니다.
+        </p>
+        <p className="text-[13px] leading-relaxed text-white/35">
+          넘기는 양은 <b className="text-white/60">기본 → 모바일</b> 탭에서 조절합니다. 이 키를
+          다른 용도로 쓰시려면 거기서 다른 기능을 고르거나, 위의 다른 탭에서 키를 지정하세요.
+        </p>
+      </div>
+    );
+  }
+
   // Side by side, each column scrolls on its own rather than the panel
   // scrolling as one piece. That is what keeps the preview on screen while a
   // long list of steps is worked through: with one shared scrollbar the
@@ -417,8 +440,9 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
             {draftParsed.rejected.some((ch) => /[ㄱ-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch)) && (
               <>
                 <br />
-                한글은 키보드가 아니라 PC의 한/영 상태가 만드는 글자라, 기기에서 직접 보낼
-                수 없습니다.
+                한글은 자판 위치로 적어주세요. 기기는 글자가 아니라 자리를 보내고, 한글이냐
+                영문이냐는 PC의 한/영 상태가 정합니다 — 한글 상태에서 <b>dkssud</b> 는
+                <b> 안녕</b> 이 됩니다.
               </>
             )}
           </p>
