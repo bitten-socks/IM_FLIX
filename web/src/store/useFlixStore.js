@@ -31,6 +31,11 @@ import { productForId, UNKNOWN_PRODUCT } from '../lib/products';
 
 const EMPTY_KEYMAP = [];
 
+// How long to let the replies to a write arrive before trusting what comes
+// next. The device answers each step as it writes it, and those answers are
+// the only thing that can be confused for a read.
+const WRITE_SETTLE_MS = 150;
+
 export const useFlixStore = create((set, get) => ({
   supported: isWebHIDSupported(),
   device: null,
@@ -114,6 +119,12 @@ export const useFlixStore = create((set, get) => ({
       }
       const detail = parseKeyDetailResponse(bytes);
       if (detail) {
+        // Every step written is answered with the chunk that step sits in, as
+        // it stands at that instant -- so mid-write the replies describe a
+        // half-written sequence: three letters and a blank, or the last chunk
+        // on its own. They are indistinguishable from a read's reply, so the
+        // key being written is muted until its writes have drained.
+        if (get()._writingKey === detail.keyIndex) return;
         set((s) => ({
           keyDetails: {
             ...s.keyDetails,
@@ -228,6 +239,10 @@ export const useFlixStore = create((set, get) => ({
   // keymap dump only carries step 0, so the macro editor needs this.
   // A key's 16 steps span several reports, so ask for each chunk in turn.
   // The replies arrive asynchronously and are merged by the report handler.
+  // Set while a key's steps are being written, so the replies those writes
+  // produce are not mistaken for the finished sequence.
+  _writingKey: null,
+
   // The compact dump says which keys are macros but carries only each one's
   // first step, which is why a macro keycap could show nothing but its first
   // letter. Showing the whole sequence means pulling the detail for every
@@ -286,6 +301,7 @@ export const useFlixStore = create((set, get) => ({
   programMacro: async (keyIndex, steps) => {
     const { device } = get();
     if (!device || !steps.length) return;
+    set({ _writingKey: keyIndex });
     try {
       await sendPacket(
         device,
@@ -294,20 +310,23 @@ export const useFlixStore = create((set, get) => ({
       for (let i = 0; i < steps.length; i++) {
         await sendPacket(device, buildWriteStepPacket({ keyIndex, stepIndex: i, ...steps[i] }));
       }
-      // Drop what we held for this key so the reload that follows fetches the
-      // sequence just written rather than keeping the one it replaced.
+
+      // Sending is not arriving: the replies to those writes are still on
+      // their way, and any that lands after the key is unmuted would be taken
+      // for the finished sequence. Give them a moment to drain first.
+      await new Promise((resolve) => setTimeout(resolve, WRITE_SETTLE_MS));
+
+      // Then drop what was held and read the key back in full, so what ends up
+      // on screen is one clean read rather than a pile of partial replies.
       set((s) => {
         const keyDetails = { ...s.keyDetails };
         delete keyDetails[keyIndex];
-        return { keyDetails, lastSync: Date.now(), error: null };
+        return { keyDetails, _writingKey: null, lastSync: Date.now(), error: null };
       });
-      await get().refreshKeymap();
-      // The echoes from the writes above are still arriving, and each carries
-      // a single chunk. Read the key back in full so what is held is the whole
-      // sequence rather than whichever chunk landed last.
       await get().loadKeyDetail(keyIndex);
+      await get().refreshKeymap();
     } catch (err) {
-      set({ error: `매크로 저장 실패: ${err.message}` });
+      set({ _writingKey: null, error: `매크로 저장 실패: ${err.message}` });
     }
   },
 
