@@ -15,10 +15,11 @@ import {
   DOM_CODE_TO_HID,
   isModifierDomCode,
   describeKey,
-  stepsToText,
+  macroGroups,
 } from '../lib/keycodes';
-import { KEY_MODE } from '../lib/protocol';
+import { KEY_MODE, detailIsComplete } from '../lib/protocol';
 import TimingTab from './TimingTab';
+import { describeSwipe } from '../lib/remote';
 import RemoteTab from './RemoteTab';
 
 // Two levels rather than one strip of eight tabs.
@@ -250,13 +251,19 @@ export default function AssignmentDrawer() {
   useEffect(() => setWideDrawer(wide), [wide, setWideDrawer]);
 
   // A macro key's real assignment is the whole sequence, which the compact
-  // dump cannot express -- show the word instead of just its first letter.
+  // dump cannot express. The steps are named one by one rather than collapsed
+  // into the word they spell: a word reads the same whether every step
+  // arrived or one of them is missing, which is the one thing worth seeing
+  // here. Past a handful there is no room, so it says how many instead.
   const currentLabel = (() => {
-    if (detail?.mode === KEY_MODE.MACRO) {
-      const word = stepsToText(detail.steps, detail.stepCount);
-      if (word) return `"${word}"`;
+    if (detail?.mode === KEY_MODE.MACRO && detailIsComplete(detail)) {
+      const swipe = describeSwipe(detail.steps, detail.stepCount);
+      if (swipe) return swipe;
+      const groups = macroGroups(detail.steps, detail.stepCount);
+      if (groups.length <= 6) return groups.join(' → ');
       return `${detail.stepCount}단계 매크로`;
     }
+    if (detail?.mode === KEY_MODE.MACRO) return `${detail.stepCount}단계 매크로`;
     return describeKey(keymap[selectedKey] ?? {});
   })();
 

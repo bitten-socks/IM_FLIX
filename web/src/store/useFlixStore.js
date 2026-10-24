@@ -36,6 +36,29 @@ const EMPTY_KEYMAP = [];
 // the only thing that can be confused for a read.
 const WRITE_SETTLE_MS = 150;
 
+// A beat between steps. Writing a macro is a burst of reports, each of which
+// the device answers and then queues a save for; sent back to back, one can
+// go missing -- almost always the last.
+const WRITE_GAP_MS = 12;
+
+// How long to wait for a read to come back whole before giving up on it.
+const READ_TIMEOUT_MS = 1500;
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// What the device says a step is, against what it was told. Only the fields
+// that travel: a step carries nothing else.
+const sameStep = (a, b) =>
+  a && b &&
+  a.code === b.code &&
+  (a.mod & 0x0f) === (b.mod & 0x0f) &&
+  !!a.isMedia === !!b.isMedia &&
+  !!a.chord === !!b.chord &&
+  !!a.sustain === !!b.sustain &&
+  !!a.onRelease === !!b.onRelease &&
+  a.holdMs === b.holdMs &&
+  a.gapMs === b.gapMs;
+
 export const useFlixStore = create((set, get) => ({
   supported: isWebHIDSupported(),
   device: null,
@@ -298,32 +321,71 @@ export const useFlixStore = create((set, get) => ({
   // first, then write each step. Order matters -- the firmware clamps
   // step_count, so raising it before writing means a half-written sequence
   // can never be played with stale steps past the new end.
+  // Reads the key back until it is whole, or gives up and returns whatever
+  // arrived -- the caller decides what an incomplete answer means.
+  _awaitKeyDetail: async (keyIndex) => {
+    const until = Date.now() + READ_TIMEOUT_MS;
+    while (Date.now() < until) {
+      const detail = get().keyDetails[keyIndex];
+      if (detailIsComplete(detail)) return detail;
+      await pause(40);
+    }
+    return get().keyDetails[keyIndex];
+  },
+
   programMacro: async (keyIndex, steps) => {
     const { device } = get();
     if (!device || !steps.length) return;
-    set({ _writingKey: keyIndex });
-    try {
+
+    const sendAll = async (which) => {
       await sendPacket(
         device,
         buildWriteModePacket({ keyIndex, mode: KEY_MODE.MACRO, stepCount: steps.length }),
       );
-      for (let i = 0; i < steps.length; i++) {
+      for (const i of which) {
         await sendPacket(device, buildWriteStepPacket({ keyIndex, stepIndex: i, ...steps[i] }));
+        await pause(WRITE_GAP_MS);
       }
+    };
 
-      // Sending is not arriving: the replies to those writes are still on
-      // their way, and any that lands after the key is unmuted would be taken
-      // for the finished sequence. Give them a moment to drain first.
-      await new Promise((resolve) => setTimeout(resolve, WRITE_SETTLE_MS));
-
-      // Then drop what was held and read the key back in full, so what ends up
-      // on screen is one clean read rather than a pile of partial replies.
+    // Read the key back and say which steps did not arrive as sent.
+    const readBack = async () => {
       set((s) => {
         const keyDetails = { ...s.keyDetails };
         delete keyDetails[keyIndex];
         return { keyDetails, _writingKey: null, lastSync: Date.now(), error: null };
       });
       await get().loadKeyDetail(keyIndex);
+      const detail = await get()._awaitKeyDetail(keyIndex);
+      if (!detailIsComplete(detail)) return steps.map((_, i) => i);
+      return steps
+        .map((step, i) => (sameStep(detail.steps[i], step) ? -1 : i))
+        .filter((i) => i >= 0);
+    };
+
+    set({ _writingKey: keyIndex });
+    try {
+      await sendAll(steps.map((_, i) => i));
+
+      // Sending is not arriving: the replies to those writes are still on
+      // their way, and any that lands after the key is unmuted would be taken
+      // for the finished sequence. Give them a moment to drain first.
+      await pause(WRITE_SETTLE_MS);
+
+      // A dropped report leaves the device holding a sequence it was never
+      // asked for, and nothing else would notice. Check, and write again what
+      // did not land -- once, because a second failure is not a race.
+      let missing = await readBack();
+      if (missing.length) {
+        set({ _writingKey: keyIndex });
+        await sendAll(missing);
+        await pause(WRITE_SETTLE_MS);
+        missing = await readBack();
+      }
+      if (missing.length) {
+        set({ error: '매크로 일부가 기기에 들어가지 않았습니다. 다시 저장해 주세요.' });
+      }
+
       await get().refreshKeymap();
     } catch (err) {
       set({ _writingKey: null, error: `매크로 저장 실패: ${err.message}` });

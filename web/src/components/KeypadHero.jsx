@@ -1,5 +1,5 @@
 import { useFlixStore } from '../store/useFlixStore';
-import { describeKey, macroGroups, stepsToText } from '../lib/keycodes';
+import { describeKey, macroGroups } from '../lib/keycodes';
 import { describeSwipe } from '../lib/remote';
 import { KEY_MODE, detailIsComplete } from '../lib/protocol';
 
@@ -53,10 +53,9 @@ function MacroList({ keymap, keyDetails, product, selectedKey, onSelect, connect
     // Gestures are not sequences anyone needs reading back to them.
     const ready = detailIsComplete(detail);
     if (ready && describeSwipe(detail.steps, detail.stepCount)) continue;
-    const text = ready
-      ? stepsToText(detail.steps, detail.stepCount) ??
-        macroGroups(detail.steps, detail.stepCount).join(' → ')
-      : '읽는 중…';
+    // Step by step, never collapsed into the word it spells: a word reads
+    // the same whether every step arrived or one is missing.
+    const text = ready ? macroGroups(detail.steps, detail.stepCount).join(' → ') : '읽는 중…';
     rows.push({ index: i, text });
   }
   if (!rows.length) return null;

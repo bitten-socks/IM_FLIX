@@ -227,7 +227,16 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   };
 
   const applySpeed = (speed) => {
-    setSteps((prev) => prev.map((s) => ({ ...s, holdMs: speed.holdMs, gapMs: speed.gapMs })));
+    setSteps((prev) =>
+      prev.map((s, i) => ({
+        ...s,
+        chord: 0,
+        sustain: 0,
+        onRelease: 0,
+        holdMs: speed.holdMs,
+        gapMs: speed.gapMs,
+      })),
+    );
     setSaved(false);
   };
 
@@ -486,7 +495,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
 
       {steps.length > 0 && (
         <div>
-          <p className="mb-2 text-[13px] font-semibold text-white/70">입력 속도</p>
+          <p className="text-[13px] font-semibold text-white/70">빠른 설정</p>
+          <p className="mb-2 mt-0.5 text-[11px] leading-relaxed text-white/30">
+            하나씩 차례로 눌리는 순서로 되돌리고, 그 속도로 맞춥니다. 켜 둔 스위치는 모두
+            꺼집니다.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {SPEEDS.map((s) => (
               <button
