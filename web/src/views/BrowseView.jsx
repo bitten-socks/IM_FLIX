@@ -79,6 +79,17 @@ const DETAIL = [
 const SHEET_WIDTH = 860;
 const SHEET_HEIGHT = 1100;
 
+// Bound by the height of the window rather than its width, so a sheet is never
+// taller than the screen showing it. At 860 wide a sheet stands 1100 tall,
+// which is more than a laptop has, and the bottom of every one was cut off.
+// 76vh of width comes to 97vh of height -- the whole sheet, with a little room
+// under it. The 860 cap keeps it from being drawn larger than the image it is
+// made of on a tall display.
+//
+// The carousel above shares it: the two sit in one column down the page, and
+// written out twice they would eventually stop matching.
+const COLUMN = 'mx-auto w-full max-w-[min(860px,76vh)]';
+
 export default function BrowseView({ onNavigate = navigate }) {
   return (
     <FadeIn>
@@ -89,18 +100,13 @@ export default function BrowseView({ onNavigate = navigate }) {
           </p>
         </Section>
 
-        <ProductCarousel />
+        <div className={COLUMN}>
+          <ProductCarousel />
+        </div>
 
-        {/* Full bleed against the page's own margin: the sheets carry their own
-            background and padding, so a card around them would be a frame
-            around a frame. */}
-        {/* Bounded by the height of the window rather than its width, so a
-            sheet is never taller than the screen showing it. At 860 wide a
-            sheet is 1100 tall, which is more than a laptop has, and the bottom
-            of every one of them was cut off. 76vh of width works out at 97vh
-            of height -- the whole sheet, with a little room left. The 860 cap
-            keeps it from growing past its own resolution on a tall display. */}
-        <div className="mx-auto mt-24 flex max-w-[min(860px,76vh)] flex-col overflow-hidden rounded-2xl">
+        {/* The sheets carry their own background and padding, so nothing is
+            drawn around them -- a card here would be a frame around a frame. */}
+        <div className={`${COLUMN} mt-24 flex flex-col overflow-hidden rounded-2xl`}>
           {DETAIL.map(({ src, alt }, i) => (
             <img
               key={src}
