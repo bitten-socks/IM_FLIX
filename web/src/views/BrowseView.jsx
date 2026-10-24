@@ -94,7 +94,13 @@ export default function BrowseView({ onNavigate = navigate }) {
         {/* Full bleed against the page's own margin: the sheets carry their own
             background and padding, so a card around them would be a frame
             around a frame. */}
-        <div className="mx-auto mt-24 flex max-w-[860px] flex-col overflow-hidden rounded-2xl">
+        {/* Bounded by the height of the window rather than its width, so a
+            sheet is never taller than the screen showing it. At 860 wide a
+            sheet is 1100 tall, which is more than a laptop has, and the bottom
+            of every one of them was cut off. 76vh of width works out at 97vh
+            of height -- the whole sheet, with a little room left. The 860 cap
+            keeps it from growing past its own resolution on a tall display. */}
+        <div className="mx-auto mt-24 flex max-w-[min(860px,76vh)] flex-col overflow-hidden rounded-2xl">
           {DETAIL.map(({ src, alt }, i) => (
             <img
               key={src}
