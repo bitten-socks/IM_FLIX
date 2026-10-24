@@ -139,6 +139,18 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(false);
   };
 
+  const setRelease = (index, on) => {
+    setSteps((prev) =>
+      prev.map((s, i) => {
+        if (i === index) {
+          return { ...s, onRelease: on ? 1 : 0, chord: on ? 0 : s.chord, sustain: on ? 0 : s.sustain };
+        }
+        return on && i > index ? { ...s, sustain: 0 } : s;
+      }),
+    );
+    setSaved(false);
+  };
+
   const remove = (index) => {
     setSteps((prev) => {
       const next = prev.filter((_, i) => i !== index);
@@ -212,10 +224,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
 
   // Measured over the press phase only -- steps that play after the lift are
   // taps by definition and can never be held.
-  const pressPhase = (() => {
-    const cut = steps.findIndex((s) => s.onRelease);
-    return cut === -1 ? steps : steps.slice(0, cut);
-  })();
+  // Where the release phase begins, or -1 while there is none. A step from
+  // here on plays after the finger has lifted, so it cannot also be held
+  // until the finger lifts -- that has already happened.
+  const releaseAt = steps.findIndex((s) => s.onRelease);
+  const pressPhase = releaseAt === -1 ? steps : steps.slice(0, releaseAt);
   const allSustained = pressPhase.length > 0 && pressPhase.every((s) => s.sustain);
   const labels = steps.map((s) => describeKey(s));
   const groups = chordGroups(steps, steps.length);
@@ -238,6 +251,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
             const group = groups[groupIndex] ?? [i];
             const inChord = group.length > 1;
             const isLast = i === steps.length - 1;
+            const afterLift = releaseAt !== -1 && i >= releaseAt;
 
             return (
               <div
@@ -262,6 +276,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   </IconButton>
                 </div>
 
+                {!afterLift && (
                 <button
                   onClick={() => update(i, { sustain: step.sustain ? 0 : 1 })}
                   className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
@@ -272,12 +287,11 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 >
                   {step.sustain ? '✓ 손 뗄 때까지 누르고 있음' : '손 뗄 때까지 누르고 있기'}
                 </button>
+                )}
 
                 {i > 0 && (
                   <button
-                    onClick={() =>
-                      update(i, { onRelease: step.onRelease ? 0 : 1, chord: 0, sustain: 0 })
-                    }
+                    onClick={() => setRelease(i, !step.onRelease)}
                     className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
                       step.onRelease
                         ? 'bg-violet-500/20 text-violet-200'
