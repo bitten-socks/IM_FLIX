@@ -263,6 +263,85 @@ export function macroDurationMs(steps, stepCount) {
   }, 0);
 }
 
+// Visual stand-ins for the two waits a user never sets directly: how far a
+// sustained key is drawn past its group to show it is still down, and the
+// beat between letting go and the release phase starting. The firmware's own
+// handover is handover_ms(); these exist so a drawing can show the shape.
+export const HOLD_TAIL_MS = 260;
+export const LIFT_GAP_MS = 220;
+
+// Where every step sits in time. chordGroups() says which steps fire
+// together; this says when, which is what a preview needs to show the shape
+// of a sequence rather than just its order.
+//
+// Three things bend the plain "hold, then gap" walk:
+//   - a chord group shares one start and one hold, so its steps stack
+//   - a sustained step does not end with its group; it runs to the lift
+//   - an on-release step opens a second phase, which plays after the lift
+//
+// Times are milliseconds from the first press. Returns a span per step plus
+// the marks a drawing needs.
+export function macroTimeline(steps, stepCount = steps.length) {
+  const count = Math.min(stepCount, steps.length);
+  if (!count) return { spans: [], groups: [], liftAt: 0, total: 0, hasSustain: false, hasRelease: false };
+
+  const groups = chordGroups(steps, count);
+  let releaseIndex = count;
+  for (let i = 0; i < count; i++) {
+    if (steps[i].onRelease) {
+      releaseIndex = i;
+      break;
+    }
+  }
+
+  const spans = new Array(count).fill(null);
+
+  // Lay a run of groups end to end from `from`, returning where the last one
+  // stops. The trailing gap is left off: nothing waits on it.
+  const lay = (list, from, phase) => {
+    let at = from;
+    let end = from;
+    list.forEach((group, gi) => {
+      const hold = steps[group[0]].holdMs;
+      const gap = steps[group[group.length - 1]].gapMs;
+      group.forEach((i) => {
+        spans[i] = { start: at, end: at + hold, sustain: !!steps[i].sustain, phase };
+      });
+      end = at + hold;
+      if (gi < list.length - 1) at = end + gap;
+    });
+    return end;
+  };
+
+  const pressGroups = groups.filter((g) => g[0] < releaseIndex);
+  const releaseGroups = groups.filter((g) => g[0] >= releaseIndex);
+
+  const pressEnd = lay(pressGroups, 0, 'press');
+  const sustainedPress = spans.some((s) => s && s.phase === 'press' && s.sustain);
+  // A sustained key is down until the finger lifts, which has no set length,
+  // so the lift mark sits a little past the last press and the held bars run
+  // to it. Without one, the lift is simply where the press phase ended.
+  const liftAt = sustainedPress ? pressEnd + HOLD_TAIL_MS : pressEnd;
+
+  const releaseEnd = releaseGroups.length
+    ? lay(releaseGroups, liftAt + LIFT_GAP_MS, 'release')
+    : liftAt;
+
+  spans.forEach((span) => {
+    if (!span || !span.sustain) return;
+    span.end = Math.max(span.end, span.phase === 'press' ? liftAt : releaseEnd);
+  });
+
+  return {
+    spans,
+    groups,
+    liftAt,
+    total: Math.max(liftAt, releaseEnd),
+    hasSustain: spans.some((s) => s && s.sustain),
+    hasRelease: releaseGroups.length > 0,
+  };
+}
+
 // Fold an incoming chunk into whatever detail we already hold for that key.
 // Steps outside the chunk are left as they were, so the four replies to a
 // full read accumulate instead of overwriting each other.
