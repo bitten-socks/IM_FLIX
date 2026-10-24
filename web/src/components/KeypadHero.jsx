@@ -10,53 +10,59 @@ import { KEY_MODE } from '../lib/protocol';
 // The case renders are near-black, so anything drawn over a keycap has to
 // bring its own contrast. A dark chip with white text -- fine on the page
 // background -- disappears against the product itself.
-function KeyLabel({ entry, detail }) {
-  const isMacro = entry?.mode === KEY_MODE.MACRO;
-  // The detail arrives a moment after the dump, so until it does the keycap
-  // falls back to the first step rather than going blank.
-  const steps = isMacro && detail?.steps ? detail : null;
-  // A sequence that spells something is shown as the word. Sixteen letters as
-  // sixteen chips with arrows between them is the same thing said at six times
-  // the size, and it reads worse: "block" is the macro, B→L→O→C→K is a
-  // description of it.
-  const word = steps ? stepsToText(steps.steps, steps.stepCount) : null;
-  const groups = steps && !word ? macroGroups(steps.steps, steps.stepCount) : null;
+function KeyLabel({ entry }) {
+  // Just the badge for a macro. A key opening is about 86px square, so a
+  // sequence written across it wrapped into a block of tiny text that fought
+  // the case render behind it; the sequences are listed under the keypad
+  // instead, where there is a line's width to say them in.
+  if (entry?.mode === KEY_MODE.MACRO) {
+    return (
+      <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
+        MACRO
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-900 shadow">
+      {describeKey(entry ?? {})}
+    </span>
+  );
+}
+
+// What each macro key actually does, under the keypad where a line of text
+// fits. Rows select their key, so the list works the way the keycaps do.
+function MacroList({ keymap, keyDetails, product, selectedKey, onSelect, connected }) {
+  const rows = [];
+  for (let i = 0; i < product.keyCount; i++) {
+    if (keymap[i]?.mode !== KEY_MODE.MACRO) continue;
+    const detail = keyDetails[i];
+    const text = detail?.steps
+      ? stepsToText(detail.steps, detail.stepCount) ??
+        macroGroups(detail.steps, detail.stepCount).join(' → ')
+      : '읽는 중…';
+    rows.push({ index: i, text });
+  }
+  if (!rows.length) return null;
 
   return (
-    <>
-      {isMacro && (
-        <span className="rounded bg-amber-400 px-1 py-0.5 text-[9px] font-bold text-slate-950">
-          MACRO
-        </span>
-      )}
-      {word ? (
-        <span className="max-w-full break-all rounded bg-white px-1 py-px text-center text-[10px] font-bold leading-tight text-slate-900 shadow">
-          {word}
-        </span>
-      ) : groups?.length ? (
-        <span
-          title={groups.join(' → ')}
-          className="flex max-w-full flex-wrap items-center justify-center gap-x-px gap-y-0.5"
+    <div className="mt-5 flex flex-col gap-1 border-t border-slate-900/10 pt-4">
+      {rows.map(({ index, text }) => (
+        <button
+          key={index}
+          disabled={!connected}
+          onClick={() => onSelect(index)}
+          className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition disabled:cursor-not-allowed ${
+            selectedKey === index ? 'bg-cyan-400/25' : 'hover:bg-slate-900/[0.06]'
+          }`}
         >
-          {groups.map((group, i) => (
-            <span key={i} className="flex items-center">
-              {i > 0 && <span className="px-px text-[8px] font-bold text-white/80">→</span>}
-              <span
-                className={`rounded bg-white px-1 py-px font-bold leading-tight text-slate-900 shadow ${
-                  groups.length > 6 ? 'text-[8px]' : 'text-[9px]'
-                }`}
-              >
-                {group}
-              </span>
-            </span>
-          ))}
-        </span>
-      ) : (
-        <span className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-900 shadow">
-          {describeKey(entry ?? {})}
-        </span>
-      )}
-    </>
+          <span className="w-6 shrink-0 text-[11px] font-bold text-slate-500">K{index + 1}</span>
+          <span className="shrink-0 rounded bg-amber-400 px-1 py-0.5 text-[9px] font-bold text-slate-950">
+            MACRO
+          </span>
+          <span className="min-w-0 break-all text-[13px] font-semibold text-slate-900">{text}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -72,8 +78,8 @@ export default function KeypadHero() {
       ? 'bg-cyan-400/25 ring-[3px] ring-cyan-300'
       : 'ring-1 ring-white/30 hover:bg-cyan-400/15 hover:ring-cyan-300/80';
 
-  if (product.artwork && product.hotspots) {
-    return (
+  const keypad =
+    product.artwork && product.hotspots ? (
       <div className="flex justify-center py-2">
         <div className="relative w-full max-w-lg">
           <img
@@ -101,17 +107,14 @@ export default function KeypadHero() {
                 <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   K{index + 1}
                 </span>
-                <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
+                <KeyLabel entry={keymap[index]} />
               </button>
             );
           })}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-center py-2">
+    ) : (
+      <div className="flex justify-center py-2">
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(${product.columns}, minmax(0, 1fr))` }}
@@ -124,10 +127,24 @@ export default function KeypadHero() {
             className={`flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
           >
             <span className="text-[10px] font-medium text-white/50">K{index + 1}</span>
-            <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
+            <KeyLabel entry={keymap[index]} />
           </button>
         ))}
       </div>
     </div>
+    );
+
+  return (
+    <>
+      {keypad}
+      <MacroList
+        keymap={keymap}
+        keyDetails={keyDetails}
+        product={product}
+        selectedKey={selectedKey}
+        onSelect={setSelectedKey}
+        connected={connected}
+      />
+    </>
   );
 }
