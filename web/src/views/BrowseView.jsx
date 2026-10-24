@@ -17,21 +17,21 @@ import { ROUTES, navigate } from '../lib/router';
 // engines have something to index besides the filename.
 
 const DETAIL = [
-  { src: '1.png', alt: 'FLIX — 키링이 된 매크로 패드. VIBE 4 · 6 · 9 제품과 패키지' },
+  { src: '1.jpg', alt: 'FLIX — 키링이 된 매크로 패드. VIBE 4 · 6 · 9 제품과 패키지' },
   {
-    src: '2.png',
+    src: '2.jpg',
     alt:
       '키캡으로 스트레스 해소 · 설치 없이 키보드 맵핑 · 축 커스텀 가능. ' +
       '가방에 걸린 키링, 노트북에 연결한 모습, 교체용 축',
   },
   {
-    src: '3.png',
+    src: '3.jpg',
     alt:
       '언제 쓰는 건가요 — AI와 작업할 때, 설계·편집 작업, 게임 키 분리, 게임 커맨드 등록. ' +
       '반복적인 작업과 키보드로 누르기 어려운 작업에 사용합니다',
   },
   {
-    src: '4.png',
+    src: '4.jpg',
     alt:
       'FLIX 라인업 — VIBE 4는 2×2 미니멀형, VIBE 6은 3×2 밸런스형, VIBE 9는 3×3 확장형',
   },
@@ -67,6 +67,11 @@ const DETAIL = [
   },
 ];
 
+// The first four are photographs and ride far smaller as JPEG -- 2.9MB of PNG
+// down to 0.9MB, with nothing visible lost at this quality even on the body
+// text laid over them. The rest are flat colour and lettering, where PNG is
+// both smaller and exact, so they stay as they are.
+//
 // The images are 860x1100. Giving the browser that ratio up front stops the
 // page jumping as each one arrives, and everything below the first is left to
 // load on approach -- ten of them is a few megabytes, and nobody has scrolled
