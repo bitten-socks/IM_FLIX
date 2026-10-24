@@ -28,7 +28,11 @@ const GUTTER = 30;
 // like the whole macro writhing. Off a ladder the scale holds still through
 // small edits, and only what comes after the edited gap moves -- which is
 // what actually happened to the sequence.
-const MS_PER_PX = [0.2, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500];
+// The rungs sit about 1.5x apart: close enough that the drawing still fills
+// the panel, far enough that an ordinary edit stays on one of them.
+const MS_PER_PX = [
+  0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 25, 40, 60, 100, 150, 250, 400, 600,
+];
 
 export function formatDuration(ms) {
   if (ms < 1000) return `${ms}ms`;
