@@ -2,62 +2,77 @@ import FadeIn from '../components/FadeIn';
 import ProductCarousel from '../components/ProductCarousel';
 import { ROUTES, navigate } from '../lib/router';
 
-// Draft. The structure is the deliverable here -- three sections in the order
-// someone meets the product: what it is, what it does, what it is for.
+// The product page, which is the detail page -- the same images that go up on
+// the marketplace listing, in the same order.
 //
-// Features and use cases are laid out the way a shopping listing reads:
-// full-width blocks stacked down the page, each led by a picture, rather than
-// a row of cards to compare. Cards invite comparison; these are meant to be
-// read in order. The image slots are empty on purpose and say what belongs in
-// them, so the layout can be judged before the photography exists.
+// This used to be a layout waiting on photography: four features and three use
+// cases, each led by an empty 4:5 slot describing the picture that belonged in
+// it. The pictures arrived as a finished detail page instead, laid out whole
+// rather than as loose images, so the layout it was waiting for no longer had
+// anything to hold. Keeping both would have meant writing the same product
+// twice and remembering to change both.
+//
+// The captions live in `alt`, which is the only place the words survive now
+// that they are drawn into the images: screen readers read them, and search
+// engines have something to index besides the filename.
 
-const FEATURES = [
+const DETAIL = [
+  { src: '1.png', alt: 'FLIX — 키링이 된 매크로 패드. VIBE 4 · 6 · 9 제품과 패키지' },
   {
-    step: '01',
-    title: '열쇠고리형 클리커 겸 커맨드보드',
-    body: '가방이나 키링에 걸어 두고, 필요할 때 USB로 연결해 씁니다. 손에 잡히는 크기에 클리커와 매크로패드를 함께 담았습니다.',
-    slot: '키링에 걸린 제품 · 손에 쥔 크기 비교',
+    src: '2.png',
+    alt:
+      '키캡으로 스트레스 해소 · 설치 없이 키보드 맵핑 · 축 커스텀 가능. ' +
+      '가방에 걸린 키링, 노트북에 연결한 모습, 교체용 축',
   },
   {
-    step: '02',
-    title: '축 교체 가능',
-    body: '핫스왑 소켓이라 납땜 없이 축을 바꿀 수 있습니다. 조용한 축, 걸리는 맛이 있는 축 — 취향대로 고르세요.',
-    slot: '키캡을 뽑아 축을 교체하는 장면',
+    src: '3.png',
+    alt:
+      '언제 쓰는 건가요 — AI와 작업할 때, 설계·편집 작업, 게임 키 분리, 게임 커맨드 등록. ' +
+      '반복적인 작업과 키보드로 누르기 어려운 작업에 사용합니다',
   },
   {
-    step: '03',
-    title: '키 맵핑 가능',
-    body: '브라우저에서 바로 설정합니다. 프로그램을 깔 필요가 없고, 바꾼 값은 기기에 저장되어 다른 PC에 꽂아도 그대로입니다.',
-    slot: '키마다 다른 용도를 선으로 연결한 그래픽',
+    src: '4.png',
+    alt:
+      'FLIX 라인업 — VIBE 4는 2×2 미니멀형, VIBE 6은 3×2 밸런스형, VIBE 9는 3×3 확장형',
   },
   {
-    step: '04',
-    title: '폰·태블릿에서는 영상 리모컨',
-    body: '설정이 기기 안에 저장되기 때문에, PC에서 뽑아 폰이나 태블릿에 꽂으면 그대로 리모컨이 됩니다. 재생과 볼륨은 앱을 가리지 않고 동작합니다. 앱 설치도, 페어링도, 충전할 배터리도 없습니다.',
-    slot: '태블릿으로 강의를 보며 옆에 둔 기기를 누르는 손',
+    src: '5.png',
+    alt: '매핑은 어떻게 하나요 — 연결, 설정, 확정 세 단계. 프로그램 설치 없이 브라우저에서',
+  },
+  {
+    src: '6.png',
+    alt:
+      '무엇을 매핑할 수 있나요 — 문자·숫자·기호, 단축키 조합, 단어, 미디어, 마우스 휠, ' +
+      '여러 키 순서대로. 설정은 기기 안에 저장됩니다',
+  },
+  {
+    src: '7.png',
+    alt: '고급 매크로 설정 — 순서대로, 동시에, 손 뗄 때까지 세 가지 타이밍',
+  },
+  {
+    src: '8.png',
+    alt: '게임에 유용한 매크로 — 잡고 있다가 같이 떼기(QW), 뗐다가 다시 누르기(DD)',
+  },
+  {
+    src: '9.png',
+    alt:
+      '폰·태블릿에서 사용 — 모든 앱에서 미디어 키, 대부분의 앱에서 스크롤, ' +
+      '숏폼 피드 넘기기, 앱에 따라 동작하는 키',
+  },
+  {
+    src: '10.png',
+    alt:
+      '유의사항 — 키 맵핑은 자판의 위치로, 한 키에 최대 16자, 설정은 컴퓨터에서만, ' +
+      'Safari·Firefox 미지원, 회사·학교 네트워크에서는 접속이 막힐 수 있음',
   },
 ];
 
-const USE_CASES = [
-  {
-    tag: 'AI',
-    title: 'AI와 대화할 때',
-    body: '자주 쓰는 지시를 키 하나에 담아 둡니다. 선택지를 고를 때 누르는 1·2 같은 답도 손을 옮기지 않고 누를 수 있습니다.',
-    slot: '오버헤드 · 화면과 기기를 바로 위에서',
-  },
-  {
-    tag: 'GAME',
-    title: '게임',
-    body: '배틀그라운드의 수류탄 교체처럼 손이 꼬이는 키를 하나로 모읍니다. FIFA의 연속 입력 커맨드도 한 번에 넣을 수 있습니다.',
-    slot: '손 클로즈업 · 화면은 뒤에서 흐리게',
-  },
-  {
-    tag: 'WORK',
-    title: '작업',
-    body: '오토캐드 단축키, 편집 툴의 자주 쓰는 명령을 손 닿는 곳에 둡니다. 단축키를 외우는 대신 키에 적어 두는 셈입니다.',
-    slot: '책상 전체 · 일상에 섞여 있는 모습',
-  },
-];
+// The images are 860x1100. Giving the browser that ratio up front stops the
+// page jumping as each one arrives, and everything below the first is left to
+// load on approach -- ten of them is a few megabytes, and nobody has scrolled
+// to the last one yet.
+const SHEET_WIDTH = 860;
+const SHEET_HEIGHT = 1100;
 
 export default function BrowseView({ onNavigate = navigate }) {
   return (
@@ -71,35 +86,25 @@ export default function BrowseView({ onNavigate = navigate }) {
 
         <ProductCarousel />
 
-        <Section eyebrow="FEATURES" title="무엇을 할 수 있나요" className="mt-28">
-          <div className="mt-12 flex flex-col gap-20">
-            {FEATURES.map((f) => (
-              <DetailBlock
-                key={f.step}
-                label={f.step}
-                title={f.title}
-                body={f.body}
-                slot={f.slot}
-              />
-            ))}
-          </div>
-        </Section>
+        {/* Full bleed against the page's own margin: the sheets carry their own
+            background and padding, so a card around them would be a frame
+            around a frame. */}
+        <div className="mx-auto mt-24 flex max-w-[860px] flex-col overflow-hidden rounded-2xl">
+          {DETAIL.map(({ src, alt }, i) => (
+            <img
+              key={src}
+              src={`/detail/${src}`}
+              alt={alt}
+              width={SHEET_WIDTH}
+              height={SHEET_HEIGHT}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              className="block w-full"
+            />
+          ))}
+        </div>
 
-        <Section eyebrow="USE CASES" title="이렇게 씁니다" className="mt-28">
-          <div className="mt-12 flex flex-col gap-20">
-            {USE_CASES.map((c) => (
-              <DetailBlock
-                key={c.tag}
-                label={c.tag}
-                title={c.title}
-                body={c.body}
-                slot={c.slot}
-              />
-            ))}
-          </div>
-        </Section>
-
-        <div className="mt-28 text-center">
+        <div className="mt-20 text-center">
           <button
             onClick={() => onNavigate(ROUTES.MAP)}
             className="rounded-xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
@@ -112,43 +117,7 @@ export default function BrowseView({ onNavigate = navigate }) {
   );
 }
 
-function DetailBlock({ label, title, body, slot }) {
-  return (
-    <article>
-      <ImageSlot note={slot} />
-      <div className="mx-auto mt-7 max-w-xl text-center">
-        <p className="text-[11px] font-bold tracking-[0.18em] text-cyan-300">{label}</p>
-        <h3 className="mt-2 text-lg font-bold text-white">{title}</h3>
-        <p className="mt-3 text-sm leading-relaxed text-white/45">{body}</p>
-      </div>
-    </article>
-  );
-}
-
-// Stands in for photography that doesn't exist yet, and says what goes here
-// so the block can be reviewed as a layout rather than as a gap.
-//
-// Portrait, not the 16:9 this started as. The same photographs have to work
-// in a marketplace listing, where the page is a single column read on a
-// phone and every image is taller than it is wide; shooting wide for here
-// and re-cropping for there means either losing the sides or shooting
-// everything twice. 4:5 is the compromise that survives both -- tall enough
-// to hold the column on a phone, not so tall it pushes the caption off this
-// page -- and it is narrower than the text column on purpose, because a
-// portrait block at full width would be taller than the viewport.
-function ImageSlot({ note }) {
-  return (
-    <div className="mx-auto flex aspect-[4/5] w-full max-w-sm items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02]">
-      <p className="px-6 text-center text-xs text-white/25">
-        이미지 자리
-        <br />
-        <span className="text-white/15">{note}</span>
-      </p>
-    </div>
-  );
-}
-
-function Section({ eyebrow, title, children, className = '' }) {
+function Section({ eyebrow, title, className = '', children }) {
   return (
     <section className={className}>
       <p className="text-center text-[11px] font-semibold tracking-[0.2em] text-white/25">
