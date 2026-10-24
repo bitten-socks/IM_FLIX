@@ -24,9 +24,6 @@
 //          offered once, because the modifier genuinely differs: Android and
 //          PC copy with Ctrl, iPhone and iPad with Cmd. One button labelled
 //          "복사" would be wrong on half the devices it is pressed on.
-//   youtube
-//          Documented YouTube shortcuts. Exact and reliable there, inert
-//          elsewhere.
 //
 // Codes are HID usage ids, matching the tables in keycodes.js.
 
@@ -41,11 +38,6 @@ export const SCOPES = {
   },
   app: { label: '앱에 따라', tone: 'text-amber-300', why: '앱이 키보드 입력을 받을 때 동작합니다' },
   edit: { label: '편집', tone: 'text-sky-300', why: '기기에 맞는 쪽을 고르세요' },
-  youtube: {
-    label: '유튜브 (브라우저)',
-    tone: 'text-white/40',
-    why: '브라우저로 볼 때만 동작합니다 · 폰·태블릿의 유튜브 앱에서는 동작하지 않습니다',
-  },
 };
 
 export const REMOTE_ROLES = {
@@ -74,12 +66,6 @@ export const REMOTE_ROLES = {
   copyApple: { label: '복사', note: 'Cmd + C · 아이폰 · 아이패드', mod: MOD_BITS.WIN, code: 0x06, isMedia: 0, scope: 'edit' },
   pasteApple: { label: '붙여넣기', note: 'Cmd + V · 아이폰 · 아이패드', mod: MOD_BITS.WIN, code: 0x19, isMedia: 0, scope: 'edit' },
 
-  back10: { label: '10초 뒤로', note: 'J', code: 0x0d, isMedia: 0, scope: 'youtube' },
-  fwd10: { label: '10초 앞으로', note: 'L', code: 0x0f, isMedia: 0, scope: 'youtube' },
-  fullscreen: { label: '전체화면', note: 'F', code: 0x09, isMedia: 0, scope: 'youtube' },
-  caption: { label: '자막 켜기 / 끄기', note: 'C', code: 0x06, isMedia: 0, scope: 'youtube' },
-  slower: { label: '배속 느리게', note: 'Shift + ,', mod: MOD_BITS.SHIFT, code: 0x36, isMedia: 0, scope: 'youtube' },
-  faster: { label: '배속 빠르게', note: 'Shift + .', mod: MOD_BITS.SHIFT, code: 0x37, isMedia: 0, scope: 'youtube' },
 };
 
 // One layout per product, in key order -- row-major, the same order the
