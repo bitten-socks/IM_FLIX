@@ -2,6 +2,8 @@
 // step's {mod, code} straight onto a QMK keycode, so a value added here needs
 // no firmware counterpart -- but it must be a real HID usage id.
 
+import { chordGroups } from './protocol';
+
 export const MOD_BITS = {
   CTRL: 0x01,
   SHIFT: 0x02,
@@ -284,6 +286,16 @@ export function textToSteps(text, { holdMs = 20, gapMs = 30, limit = 16 } = {}) 
 // Steps that are chorded, carry a modifier other than Shift, or hold a media
 // code have no character form -- those come back as null so the caller falls
 // back to the step list rather than printing a misleading word.
+// A macro broken into what fires together, in the order it plays: one entry
+// per chord group, the keys inside a group joined with +. Returned as a list
+// rather than a sentence so a caller with no room -- a keycap -- can wrap it
+// instead of having it run off the edge.
+export function macroGroups(steps, stepCount) {
+  return chordGroups(steps, stepCount).map((group) =>
+    group.map((i) => describeKey(steps[i])).join('+'),
+  );
+}
+
 export function stepsToText(steps, stepCount) {
   const used = steps.slice(0, stepCount);
   if (!used.length) return null;

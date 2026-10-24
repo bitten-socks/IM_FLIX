@@ -123,7 +123,10 @@ export const useFlixStore = create((set, get) => ({
         return;
       }
       const keys = parseKeymapResponse(bytes, get().product.keyCount);
-      if (keys) set({ keymap: keys, lastSync: Date.now() });
+      if (keys) {
+        set({ keymap: keys, lastSync: Date.now() });
+        get().loadMacroDetails();
+      }
     });
     device.addEventListener('disconnect', () => get().disconnect());
     set({
@@ -224,6 +227,19 @@ export const useFlixStore = create((set, get) => ({
   // keymap dump only carries step 0, so the macro editor needs this.
   // A key's 16 steps span several reports, so ask for each chunk in turn.
   // The replies arrive asynchronously and are merged by the report handler.
+  // The compact dump says which keys are macros but carries only each one's
+  // first step, which is why a macro keycap could show nothing but its first
+  // letter. Showing the whole sequence means pulling the detail for every
+  // macro key, not just the one being edited.
+  loadMacroDetails: async () => {
+    const { product } = get();
+    for (let i = 0; i < product.keyCount; i++) {
+      const { keymap, keyDetails } = get();
+      if (keymap[i]?.mode !== KEY_MODE.MACRO || keyDetails[i]) continue;
+      await get().loadKeyDetail(i);
+    }
+  },
+
   loadKeyDetail: async (keyIndex) => {
     const { device } = get();
     if (!device) return;
@@ -275,7 +291,13 @@ export const useFlixStore = create((set, get) => ({
       for (let i = 0; i < steps.length; i++) {
         await sendPacket(device, buildWriteStepPacket({ keyIndex, stepIndex: i, ...steps[i] }));
       }
-      set({ lastSync: Date.now(), error: null });
+      // Drop what we held for this key so the reload that follows fetches the
+      // sequence just written rather than keeping the one it replaced.
+      set((s) => {
+        const keyDetails = { ...s.keyDetails };
+        delete keyDetails[keyIndex];
+        return { keyDetails, lastSync: Date.now(), error: null };
+      });
       await get().refreshKeymap();
     } catch (err) {
       set({ error: `매크로 저장 실패: ${err.message}` });

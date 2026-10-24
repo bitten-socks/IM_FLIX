@@ -1,5 +1,5 @@
 import { useFlixStore } from '../store/useFlixStore';
-import { describeKey } from '../lib/keycodes';
+import { describeKey, macroGroups, stepsToText } from '../lib/keycodes';
 import { KEY_MODE } from '../lib/protocol';
 
 // Renders whichever model is connected. Products that have a case drawing get
@@ -10,8 +10,18 @@ import { KEY_MODE } from '../lib/protocol';
 // The case renders are near-black, so anything drawn over a keycap has to
 // bring its own contrast. A dark chip with white text -- fine on the page
 // background -- disappears against the product itself.
-function KeyLabel({ entry }) {
+function KeyLabel({ entry, detail }) {
   const isMacro = entry?.mode === KEY_MODE.MACRO;
+  // The detail arrives a moment after the dump, so until it does the keycap
+  // falls back to the first step rather than going blank.
+  const steps = isMacro && detail?.steps ? detail : null;
+  // A sequence that spells something is shown as the word. Sixteen letters as
+  // sixteen chips with arrows between them is the same thing said at six times
+  // the size, and it reads worse: "block" is the macro, B→L→O→C→K is a
+  // description of it.
+  const word = steps ? stepsToText(steps.steps, steps.stepCount) : null;
+  const groups = steps && !word ? macroGroups(steps.steps, steps.stepCount) : null;
+
   return (
     <>
       {isMacro && (
@@ -19,15 +29,39 @@ function KeyLabel({ entry }) {
           MACRO
         </span>
       )}
-      <span className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-900 shadow">
-        {describeKey(entry ?? {})}
-      </span>
+      {word ? (
+        <span className="max-w-full break-all rounded bg-white px-1 py-px text-center text-[10px] font-bold leading-tight text-slate-900 shadow">
+          {word}
+        </span>
+      ) : groups?.length ? (
+        <span
+          title={groups.join(' → ')}
+          className="flex max-w-full flex-wrap items-center justify-center gap-x-px gap-y-0.5"
+        >
+          {groups.map((group, i) => (
+            <span key={i} className="flex items-center">
+              {i > 0 && <span className="px-px text-[8px] font-bold text-white/80">→</span>}
+              <span
+                className={`rounded bg-white px-1 py-px font-bold leading-tight text-slate-900 shadow ${
+                  groups.length > 6 ? 'text-[8px]' : 'text-[9px]'
+                }`}
+              >
+                {group}
+              </span>
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-900 shadow">
+          {describeKey(entry ?? {})}
+        </span>
+      )}
     </>
   );
 }
 
 export default function KeypadHero() {
-  const { keymap, selectedKey, setSelectedKey, connected, product } = useFlixStore();
+  const { keymap, keyDetails, selectedKey, setSelectedKey, connected, product } = useFlixStore();
 
   const keyIndexes = Array.from({ length: product.keyCount }, (_, i) => i);
 
@@ -67,7 +101,7 @@ export default function KeypadHero() {
                 <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   K{index + 1}
                 </span>
-                <KeyLabel entry={keymap[index]} />
+                <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
               </button>
             );
           })}
@@ -90,7 +124,7 @@ export default function KeypadHero() {
             className={`flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40 ${selectionClasses(index)}`}
           >
             <span className="text-[10px] font-medium text-white/50">K{index + 1}</span>
-            <KeyLabel entry={keymap[index]} />
+            <KeyLabel entry={keymap[index]} detail={keyDetails[index]} />
           </button>
         ))}
       </div>
