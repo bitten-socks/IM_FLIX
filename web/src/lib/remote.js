@@ -69,9 +69,16 @@ const pointerStep = (code, holdMs, chord = 0) => ({
 // much shorter than they look: STEP_IN and DRAG are tens of milliseconds of
 // travel, not hundreds. If a drag lands short or long on a given screen, it is
 // those two to adjust -- PARK only has to be more than enough.
+//
+// The two are not independent. STEP_IN decides where the drag begins, and so
+// how much screen is left to travel: starting halfway up left only half a
+// screen to drag through, which went by too quickly for the feed to read as a
+// flick. Beginning low leaves the whole screen, and the drag is given the time
+// to cross it -- a gesture is recognised from the path it traces, so a longer
+// one over more milliseconds is easier to catch than a shorter, faster one.
 const PARK_MS = 500;
-const STEP_IN_MS = 80;
-const DRAG_MS = 100;
+const STEP_IN_MS = 35;
+const DRAG_MS = 140;
 
 const swipe = (toward) => {
   const backward = toward === POINTER.up ? POINTER.down : POINTER.up;
