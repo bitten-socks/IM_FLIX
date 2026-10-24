@@ -54,36 +54,43 @@ const pointerStep = (code, holdMs, chord = 0) => ({
   mod: 0, code, isMedia: 1, chord, sustain: 0, onRelease: 0, holdMs, gapMs: 20,
 });
 
-// A pointer only ever moves by a delta, so a swipe leaves it where the swipe
-// ended -- and a few swipes in the same direction pile it against that edge,
-// where the next drag has no room left to travel. That is what "it grabs from
-// the top" is: the drag is happening, against the top of the screen, across
-// no distance at all.
+// A pointer only ever moves by a delta, so a drag starts wherever the last one
+// left off. Left to itself it piles against an edge, and a drag with no room
+// to travel is what "it grabs from the top" was.
 //
-// So the pointer is put back afterwards rather than before: the drag goes out
-// first, which is what the press is for, and the long walk back happens while
-// nobody is waiting on it. Two directions chord into one diagonal, which puts
-// it in the far corner in a single move, and a shorter diagonal then brings it
-// off both edges -- clear of the back-swipe strip down one side and of the
-// buttons down the other.
+// So each press takes its own bearings first. A long diagonal pins the pointer
+// in a corner -- overshooting costs nothing, since it stops at the edge, and
+// that is what makes the position known without the device ever being told the
+// screen size. A short diagonal then comes off both edges, clear of the
+// back-swipe strip down one side, the buttons down the other, and the shade
+// along the top. Only then does the button go down.
+//
+// The pointer crosses a whole screen in a fraction of a second, so these are
+// much shorter than they look: STEP_IN and DRAG are tens of milliseconds of
+// travel, not hundreds. If a drag lands short or long on a given screen, it is
+// those two to adjust -- PARK only has to be more than enough.
+const PARK_MS = 500;
+const STEP_IN_MS = 80;
+const DRAG_MS = 100;
+
 const swipe = (toward) => {
   const backward = toward === POINTER.up ? POINTER.down : POINTER.up;
   return [
-    pointerStep(POINTER.button, 300, 1), pointerStep(toward, 300),
-    pointerStep(backward, 1500, 1), pointerStep(POINTER.left, 1500),
-    pointerStep(toward, 280, 1), pointerStep(POINTER.right, 280),
+    pointerStep(backward, PARK_MS, 1), pointerStep(POINTER.left, PARK_MS),
+    pointerStep(toward, STEP_IN_MS, 1), pointerStep(POINTER.right, STEP_IN_MS),
+    pointerStep(POINTER.button, DRAG_MS, 1), pointerStep(toward, DRAG_MS),
   ];
 };
 
 export const SWIPE_ROLES = {
   feedNext: {
     label: '다음 쇼츠 · 릴스',
-    note: '위로 쓸어올린 뒤 포인터를 되돌립니다',
+    note: '자리를 잡고 위로 쓸어올립니다',
     steps: swipe(POINTER.up),
   },
   feedPrev: {
     label: '이전 쇼츠 · 릴스',
-    note: '아래로 쓸어내린 뒤 포인터를 되돌립니다',
+    note: '자리를 잡고 아래로 쓸어내립니다',
     steps: swipe(POINTER.down),
   },
 };
