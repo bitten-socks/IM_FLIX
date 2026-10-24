@@ -1,4 +1,5 @@
 import FadeIn from '../components/FadeIn';
+import ManualLink from '../components/ManualLink';
 import ProductCarousel from '../components/ProductCarousel';
 import { ROUTES, navigate } from '../lib/router';
 
@@ -121,13 +122,14 @@ export default function BrowseView({ onNavigate = navigate }) {
           ))}
         </div>
 
-        <div className="mt-20 text-center">
+<div className="mt-20 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={() => onNavigate(ROUTES.MAP)}
             className="rounded-xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
           >
             키 맵핑 시작하기
           </button>
+          <ManualLink tone="solid" />
         </div>
       </div>
     </FadeIn>

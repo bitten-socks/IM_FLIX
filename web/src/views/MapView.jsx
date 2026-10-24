@@ -6,6 +6,7 @@ import StatusBar from '../components/StatusBar';
 import ConfirmBar from '../components/ConfirmBar';
 import DiagnosticPanel from '../components/DiagnosticPanel';
 import FadeIn from '../components/FadeIn';
+import ManualLink from '../components/ManualLink';
 import { useFlixStore } from '../store/useFlixStore';
 
 // The mapping screen. BrowserGuard lives here rather than around the whole
@@ -53,6 +54,13 @@ export default function MapView() {
       {/* Paired with the panel width in AssignmentDrawer. */}
       <div className={wideDrawer ? 'xl:pr-[min(880px,62vw)]' : 'xl:pr-[28rem]'}>
         <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
+          {/* Above the keypad and to the left, where it is in reach of the
+              moment the question comes up rather than at the foot of the
+              page under everything else. */}
+          <div className="-mb-2 flex">
+            <ManualLink />
+          </div>
+
           {/* Before a device is chosen the keypad is empty, leaving the
               panel shorter than the notice that sits over it -- which clipped
               the first line off the top. A floor keeps the two in step. */}
