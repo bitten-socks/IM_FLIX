@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { macroTimeline } from '../lib/protocol';
 
 // Plays a macro back and draws it, so its timing can actually be judged.
@@ -21,6 +21,14 @@ const SLOW_FACTOR = 4;
 // gets there. Rhythm still reads; which key is which stops mattering.
 const MAX_LANES = 8;
 const LANE_H = 30;
+const GUTTER = 30;
+// Milliseconds per pixel, picked off a fixed ladder rather than fitted to the
+// sequence exactly. Fitting meant every bar's width was a share of the total,
+// so nudging one gap rescaled all of them at once and a slider drag looked
+// like the whole macro writhing. Off a ladder the scale holds still through
+// small edits, and only what comes after the edited gap moves -- which is
+// what actually happened to the sequence.
+const MS_PER_PX = [0.2, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500];
 
 export function formatDuration(ms) {
   if (ms < 1000) return `${ms}ms`;
@@ -65,6 +73,18 @@ export default function MacroPreview({ steps, labels = [] }) {
   const frame = useRef(0);
   const fired = useRef(new Set());
   const click = useClicker();
+
+  // The drawing is sized in pixels, so it has to know how many it has.
+  const plotRef = useRef(null);
+  const [plotWidth, setPlotWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = plotRef.current;
+    if (!el) return undefined;
+    setPlotWidth(el.clientWidth);
+    const ro = new ResizeObserver(([entry]) => setPlotWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const { spans, groups, liftAt, total, hasSustain, hasRelease } = macroTimeline(
     steps,
@@ -131,8 +151,14 @@ export default function MacroPreview({ steps, labels = [] }) {
   // its mark pinned to the right edge and its label on top of the bar it is
   // marking. A little slack past the end gives both somewhere to sit.
   const spanTotal = liftAt >= total ? total * 1.1 : total;
-  const pct = (ms) => `${(ms / spanTotal) * 100}%`;
   const rows = lanes ? lanes.length : 1;
+
+  // Coarsest rung that still fits, so the drawing fills the panel without
+  // being redrawn to a new scale on every keystroke. Before it is measured,
+  // the finest rung keeps the first paint from being wildly wrong.
+  const room = Math.max(120, plotWidth || 320);
+  const msPerPx = MS_PER_PX.find((m) => spanTotal / m <= room) ?? MS_PER_PX[MS_PER_PX.length - 1];
+  const px = (ms) => ms / msPerPx;
 
   // Bars to draw: one per step when laned, one per group otherwise.
   const bars = lanes
@@ -166,7 +192,7 @@ export default function MacroPreview({ steps, labels = [] }) {
         <div className="flex gap-1.5">
           {/* Lane names beside their own row. Listed underneath instead, they
               never said which row was which, which is the whole point here. */}
-          <div className="shrink-0" style={{ width: 30 }}>
+          <div className="shrink-0" style={{ width: GUTTER }}>
             {(lanes ?? ['순서']).map((label, r) => (
               <div
                 key={r}
@@ -179,7 +205,8 @@ export default function MacroPreview({ steps, labels = [] }) {
             ))}
           </div>
 
-          <div className="relative flex-1" style={{ height: rows * LANE_H }}>
+          <div ref={plotRef} className="flex-1 overflow-x-auto">
+          <div className="relative" style={{ width: px(spanTotal), height: rows * LANE_H }}>
           {/* One baseline per lane, so an empty stretch still reads as time. */}
           {Array.from({ length: rows }, (_, r) => (
             <div
@@ -192,7 +219,7 @@ export default function MacroPreview({ steps, labels = [] }) {
           {(hasSustain || hasRelease) && (
             <div
               className="absolute top-0 border-l border-dashed border-white/45"
-              style={{ left: pct(liftAt), height: rows * LANE_H }}
+              style={{ left: px(liftAt), height: rows * LANE_H }}
             >
               <span className="absolute -top-0.5 left-1 whitespace-nowrap text-[9px] font-bold text-white/50">
                 손 뗌
@@ -216,8 +243,8 @@ export default function MacroPreview({ steps, labels = [] }) {
                   live ? 'brightness-125' : 'opacity-75'
                 }`}
                 style={{
-                  left: pct(span.start),
-                  width: `max(9px, ${(Math.max(1, span.end - span.start) / spanTotal) * 100}%)`,
+                  left: px(span.start),
+                  width: Math.max(9, px(Math.max(1, span.end - span.start))),
                   top: row * LANE_H + 5,
                   height: LANE_H - 10,
                 }}
@@ -230,9 +257,10 @@ export default function MacroPreview({ steps, labels = [] }) {
           {playing && (
             <div
               className="absolute top-0 w-px bg-white/80"
-              style={{ left: pct(Math.min(now, total)), height: rows * LANE_H }}
+              style={{ left: px(Math.min(now, total)), height: rows * LANE_H }}
             />
           )}
+          </div>
           </div>
         </div>
       </div>
