@@ -48,14 +48,44 @@ export const SCOPES = {
 //
 // These write a macro rather than a single key, so they are kept apart from
 // REMOTE_ROLES, whose entries are all one keycode each.
-const swipe = (direction, holdMs) => [
-  { mod: 0, code: 0xf4, isMedia: 1, chord: 1, sustain: 0, onRelease: 0, holdMs, gapMs: 20 },
-  { mod: 0, code: direction, isMedia: 1, chord: 0, sustain: 0, onRelease: 0, holdMs, gapMs: 20 },
-];
+const POINTER = { button: 0xf4, up: 0xf5, down: 0xf6, left: 0xf7, right: 0xf8 };
+
+const pointerStep = (code, holdMs, chord = 0) => ({
+  mod: 0, code, isMedia: 1, chord, sustain: 0, onRelease: 0, holdMs, gapMs: 20,
+});
+
+// A pointer only ever moves by a delta, so a swipe leaves it where the swipe
+// ended -- and a few swipes in the same direction pile it against that edge,
+// where the next drag has no room left to travel. That is what "it grabs from
+// the top" is: the drag is happening, against the top of the screen, across
+// no distance at all.
+//
+// So the pointer is put back afterwards rather than before: the drag goes out
+// first, which is what the press is for, and the long walk back happens while
+// nobody is waiting on it. Two directions chord into one diagonal, which puts
+// it in the far corner in a single move, and a shorter diagonal then brings it
+// off both edges -- clear of the back-swipe strip down one side and of the
+// buttons down the other.
+const swipe = (toward) => {
+  const backward = toward === POINTER.up ? POINTER.down : POINTER.up;
+  return [
+    pointerStep(POINTER.button, 300, 1), pointerStep(toward, 300),
+    pointerStep(backward, 1500, 1), pointerStep(POINTER.left, 1500),
+    pointerStep(toward, 280, 1), pointerStep(POINTER.right, 280),
+  ];
+};
 
 export const SWIPE_ROLES = {
-  feedNext: { label: '다음 쇼츠 · 릴스', note: '화면을 위로 쓸어올립니다', steps: swipe(0xf5, 320) },
-  feedPrev: { label: '이전 쇼츠 · 릴스', note: '화면을 아래로 쓸어내립니다', steps: swipe(0xf6, 320) },
+  feedNext: {
+    label: '다음 쇼츠 · 릴스',
+    note: '위로 쓸어올린 뒤 포인터를 되돌립니다',
+    steps: swipe(POINTER.up),
+  },
+  feedPrev: {
+    label: '이전 쇼츠 · 릴스',
+    note: '아래로 쓸어내린 뒤 포인터를 되돌립니다',
+    steps: swipe(POINTER.down),
+  },
 };
 
 export const REMOTE_ROLES = {
