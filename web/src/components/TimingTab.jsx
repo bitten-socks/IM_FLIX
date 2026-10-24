@@ -263,7 +263,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                 </div>
 
                 <button
-                  onClick={() => update(i, { sustain: step.sustain ? 0 : 1, chord: 0 })}
+                  onClick={() => update(i, { sustain: step.sustain ? 0 : 1 })}
                   className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
                     step.sustain
                       ? 'bg-amber-500/20 text-amber-200'
@@ -290,7 +290,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
                   </button>
                 )}
 
-                {!isLast && !step.sustain && !step.onRelease && (
+                {!isLast && !step.onRelease && (
                   <button
                     onClick={() => update(i, { chord: step.chord ? 0 : 1 })}
                     className={`mt-2.5 w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
@@ -334,7 +334,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
               const cut = prev.findIndex((s) => s.onRelease);
               const end = cut === -1 ? prev.length : cut;
               const on = allSustained ? 0 : 1;
-              return prev.map((s, i) => (i < end ? { ...s, sustain: on, chord: 0 } : s));
+              return prev.map((s, i) => (i < end ? { ...s, sustain: on } : s));
             }) || setSaved(false)
           }
           className={`rounded-xl px-4 py-3 text-left text-[13px] font-semibold transition ${
