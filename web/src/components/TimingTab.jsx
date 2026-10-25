@@ -17,6 +17,7 @@ import {
 } from '../lib/keycodes';
 import MacroPreview from './MacroPreview';
 import { describeSwipe } from '../lib/remote';
+import { useFlixStore } from '../store/useFlixStore';
 import { useCaptureGuard } from './AssignmentDrawer';
 
 // The whole sequence editor: what the key sends, in what order, and with what
@@ -58,6 +59,13 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   const addRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // The device says how many steps it can hold, and it is not always what
+  // this file can build: an older board answers with fewer. Writing past its
+  // limit is refused silently -- the steps are sent, accepted, and simply not
+  // there afterwards -- so the editor stops where the device does.
+  const identity = useFlixStore((s) => s.identity);
+  const maxSteps = Math.max(1, Math.min(MAX_MACRO_STEPS, identity?.maxMacroSteps || MAX_MACRO_STEPS));
   // The gesture this tab cleared on the way in, if it did, so it can say so.
   const [clearedSwipe, setClearedSwipe] = useState(null);
 
@@ -130,7 +138,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
         (e.metaKey ? MOD_BITS.WIN : 0);
 
       setSteps((prev) =>
-        prev.length >= MAX_MACRO_STEPS
+        prev.length >= maxSteps
           ? prev
           : [
               ...prev,
@@ -196,7 +204,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     setSaved(false);
   };
 
-  const room = MAX_MACRO_STEPS - steps.length;
+  const room = maxSteps - steps.length;
   const draftParsed = textToSteps(draft, {
     holdMs: commonHoldFor(steps),
     gapMs: commonGapFor(steps),
@@ -274,6 +282,12 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
           이 키에 있던 <b>{clearedSwipe}</b> 를 비우고 새로 만듭니다. 저장하기 전까지 기기에는
           그대로 남아 있으니, 되돌리려면 저장하지 말고{' '}
           <b className="text-white/70">기본 → 모바일</b> 에서 다시 고르세요.
+        </p>
+      )}
+      {maxSteps < MAX_MACRO_STEPS && (
+        <p className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-[12px] leading-relaxed text-amber-200/80">
+          이 기기의 펌웨어는 한 키에 <b>{maxSteps}단계</b>까지만 담습니다. 그보다 길게 넣으면
+          뒷부분은 저장되지 않고 사라집니다.
         </p>
       )}
       <Summary groups={groups} labels={labels} />
@@ -461,7 +475,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       <button
         ref={addRef}
         onClick={() => setListening((v) => !v)}
-        disabled={steps.length >= MAX_MACRO_STEPS}
+        disabled={steps.length >= maxSteps}
         className={`rounded-xl border-2 border-dashed py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-30 ${
           listening
             ? 'border-cyan-400 text-cyan-300'
@@ -470,7 +484,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       >
         {listening
           ? '지금 키를 누르세요 — 그 키가 추가됩니다'
-          : `＋ 키 추가 (${steps.length}/${MAX_MACRO_STEPS})`}
+          : `＋ 키 추가 (${steps.length}/${maxSteps})`}
       </button>
 
       </div>

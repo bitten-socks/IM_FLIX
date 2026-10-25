@@ -9,7 +9,8 @@ import { useFlixStore } from '../store/useFlixStore';
 const POLL_INTERVAL_MS = 100;
 
 export default function DiagnosticPanel() {
-  const { connected, matrixState, readMatrix, product, enterBootloader } = useFlixStore();
+  const { connected, matrixState, readMatrix, product, enterBootloader, identity } =
+    useFlixStore();
   const [polling, setPolling] = useState(false);
   const [everPressed, setEverPressed] = useState({});
   const [armed, setArmed] = useState(false);
@@ -102,6 +103,19 @@ export default function DiagnosticPanel() {
       <p className="mt-3 text-[11px] text-white/30">
         raw: {matrixState ? matrixState.map((b) => `0x${b.toString(16).padStart(2, '0')}`).join(' ') : '-'}
       </p>
+
+      <div className="mt-3 border-t border-white/10 pt-3 font-mono text-[11px] text-white/40">
+        <p className="mb-1 font-sans text-[11px] font-semibold text-white/60">기기가 보고한 값</p>
+        {identity ? (
+          <p>
+            protocol {identity.protocolVersion} · keys {identity.keyCount} · maxSteps{' '}
+            <b className="text-cyan-300">{identity.maxMacroSteps}</b> · config{' '}
+            {identity.configVersion}
+          </p>
+        ) : (
+          <p>-</p>
+        )}
+      </div>
 
       {/* The key combo is read once, while the board boots, so it is no help
           to a device already plugged in -- and none at all if a half-written
