@@ -44,6 +44,9 @@ const WRITE_GAP_MS = 12;
 // How long to wait for a read to come back whole before giving up on it.
 const READ_TIMEOUT_MS = 1500;
 
+// A beat between chunk requests, for the same reason as between writes.
+const READ_GAP_MS = 10;
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // What the device says a step is, against what it was told. Only the fields
@@ -287,6 +290,9 @@ export const useFlixStore = create((set, get) => ({
     try {
       for (let chunk = 0; chunk < KEY_DETAIL_CHUNKS; chunk++) {
         await sendPacket(device, buildReadKeyPacket(keyIndex, chunk));
+        // Four requests sent together are four replies the device has to get
+        // out before the host asks again; spaced, none of them has to wait.
+        await pause(READ_GAP_MS);
       }
     } catch (err) {
       set({ error: `키 상세 읽기 실패: ${err.message}` });

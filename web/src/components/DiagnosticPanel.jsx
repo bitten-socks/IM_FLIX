@@ -9,8 +9,10 @@ import { useFlixStore } from '../store/useFlixStore';
 const POLL_INTERVAL_MS = 100;
 
 export default function DiagnosticPanel() {
-  const { connected, matrixState, readMatrix, product, enterBootloader, identity } =
-    useFlixStore();
+  const {
+    connected, matrixState, readMatrix, product, enterBootloader, identity,
+    selectedKey, keyDetails, loadKeyDetail,
+  } = useFlixStore();
   const [polling, setPolling] = useState(false);
   const [everPressed, setEverPressed] = useState({});
   const [armed, setArmed] = useState(false);
@@ -103,6 +105,47 @@ export default function DiagnosticPanel() {
       <p className="mt-3 text-[11px] text-white/30">
         raw: {matrixState ? matrixState.map((b) => `0x${b.toString(16).padStart(2, '0')}`).join(' ') : '-'}
       </p>
+
+      {/* What the device actually returned for the selected key, chunk by
+          chunk. A macro whose tail goes missing looks the same from outside
+          whether the writes were refused or the reads never came -- this is
+          the only place the two can be told apart. */}
+      {selectedKey !== null && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <div className="mb-1 flex items-baseline justify-between">
+            <p className="font-sans text-[11px] font-semibold text-white/60">
+              K{selectedKey + 1} 상세 (기기에서 읽은 그대로)
+            </p>
+            <button
+              onClick={() => loadKeyDetail(selectedKey)}
+              disabled={!connected}
+              className="rounded px-2 py-0.5 text-[11px] text-cyan-300 transition hover:bg-white/5 disabled:opacity-30"
+            >
+              다시 읽기
+            </button>
+          </div>
+          {(() => {
+            const d = keyDetails[selectedKey];
+            if (!d) return <p className="font-mono text-[11px] text-white/30">아직 안 읽음</p>;
+            const arrived = [0, 1, 2, 3].filter((c) => (d.chunks ?? 0) & (1 << c));
+            return (
+              <div className="font-mono text-[11px] leading-relaxed text-white/40">
+                <p>
+                  mode {d.mode} · stepCount <b className="text-cyan-300">{d.stepCount}</b> ·
+                  도착한 청크 [{arrived.join(' ') || '없음'}]
+                </p>
+                <p className="mt-1 break-all">
+                  {d.steps.slice(0, Math.max(d.stepCount, 8)).map((st, i) => (
+                    <span key={i} className={st.code ? 'text-emerald-300' : 'text-rose-400'}>
+                      {i}:{st.code ? st.code.toString(16) : '00'}{' '}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       <div className="mt-3 border-t border-white/10 pt-3 font-mono text-[11px] text-white/40">
         <p className="mb-1 font-sans text-[11px] font-semibold text-white/60">기기가 보고한 값</p>
