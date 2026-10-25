@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFlixStore } from '../store/useFlixStore';
+import FirmwareFlasher from './FirmwareFlasher';
 
 // Hardware bring-up tool, not part of the shipping UI -- reachable only at
 // ?debug=1. Polls the firmware's debounced matrix state so a physical press
@@ -10,12 +11,11 @@ const POLL_INTERVAL_MS = 100;
 
 export default function DiagnosticPanel() {
   const {
-    connected, matrixState, readMatrix, product, enterBootloader, identity,
+    connected, matrixState, readMatrix, product, identity,
     selectedKey, keyDetails, loadKeyDetail,
   } = useFlixStore();
   const [polling, setPolling] = useState(false);
   const [everPressed, setEverPressed] = useState({});
-  const [armed, setArmed] = useState(false);
 
   const enabled = new URLSearchParams(window.location.search).has('debug');
 
@@ -160,44 +160,8 @@ export default function DiagnosticPanel() {
         )}
       </div>
 
-      {/* The key combo is read once, while the board boots, so it is no help
-          to a device already plugged in -- and none at all if a half-written
-          flash left one that enumerates but will not take the combo. The
-          firmware has always answered CMD_BOOTLOADER; nothing ever sent it.
-          Armed in two steps because the device leaves USB as a keyboard and
-          comes back as a drive. */}
-      <div className="mt-4 border-t border-white/10 pt-4">
-        {armed ? (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setArmed(false);
-                enterBootloader();
-              }}
-              className="flex-1 rounded-lg bg-amber-500 py-2 text-[13px] font-bold text-slate-950 transition hover:bg-amber-400"
-            >
-              RPI-RP2 드라이브로 재부팅
-            </button>
-            <button
-              onClick={() => setArmed(false)}
-              className="rounded-lg px-3 py-2 text-[13px] text-white/50 hover:text-white"
-            >
-              취소
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setArmed(true)}
-            disabled={!connected}
-            className="w-full rounded-lg border border-amber-500/30 py-2 text-[13px] font-semibold text-amber-300/80 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            부트로더로 재부팅
-          </button>
-        )}
-        <p className="mt-2 text-[11px] leading-relaxed text-white/30">
-          기기가 USB에서 사라지고 RPI-RP2 드라이브로 다시 나타납니다. 설정은 지워지지 않습니다.
-        </p>
-      </div>
+      <FirmwareFlasher />
+
     </section>
   );
 }

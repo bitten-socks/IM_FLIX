@@ -1,0 +1,22 @@
+{
+  "protocol": 10,
+  "configVersion": 6,
+  "builtAt": "2026-10-25",
+  "files": {
+    "vibe4": {
+      "name": "FLIX VIBE 4",
+      "path": "/firmware/flix-vibe4.uf2",
+      "bytes": 64000
+    },
+    "vibe6": {
+      "name": "FLIX VIBE 6",
+      "path": "/firmware/flix-vibe6.uf2",
+      "bytes": 64000
+    },
+    "vibe9": {
+      "name": "FLIX VIBE 9",
+      "path": "/firmware/flix-vibe9.uf2",
+      "bytes": 64000
+    }
+  }
+}
