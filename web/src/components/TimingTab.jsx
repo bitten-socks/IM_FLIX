@@ -6,6 +6,7 @@ import {
   MIN_HANDOVER_MS,
   KEY_MODE,
   chordGroups,
+  detailIsComplete,
 } from '../lib/protocol';
 import {
   DOM_CODE_TO_HID,
@@ -69,10 +70,23 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   // The gesture this tab cleared on the way in, if it did, so it can say so.
   const [clearedSwipe, setClearedSwipe] = useState(null);
 
+  // Seeded once per key, and only from a detail that arrived whole.
+  const seededFor = useRef(null);
+
   // Start from what the device already holds, so the tab edits the real
   // sequence rather than silently replacing it with a blank one.
+  //
+  // A key's steps arrive in four replies, and for a while only some of them
+  // have. Seeding from that reads the gaps as real: a five-step macro comes
+  // in as four letters and a blank, and saving writes the blank back -- the
+  // sequence loses its tail to the editor that was meant to be showing it.
+  // So it waits for the whole thing, and takes it once, since a later re-read
+  // must not overwrite what is being typed.
   useEffect(() => {
-    if (!detail) return;
+    if (!detail || !detailIsComplete(detail)) return;
+    const token = `${keyIndex}:${detail.keyIndex}`;
+    if (seededFor.current === token) return;
+    seededFor.current = token;
     const gesture =
       detail.mode === KEY_MODE.MACRO && detail.stepCount > 0
         ? describeSwipe(detail.steps, detail.stepCount)
@@ -120,7 +134,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
       );
     }
     setSaved(false);
-  }, [detail?.keyIndex, keyIndex]);
+  }, [detail, keyIndex]);
 
   useEffect(() => {
     if (!listening) return undefined;
@@ -269,6 +283,15 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   const activeSpeed = SPEEDS.find(
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
+
+  if (detail && !detailIsComplete(detail)) {
+    return (
+      <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5 text-[13px] leading-relaxed text-white/45">
+        기기에서 이 키를 읽는 중입니다. 다 읽기 전에는 고칠 수 없습니다 — 덜 읽은 상태로
+        저장하면 아직 안 온 단계가 빈칸으로 덮어쓰입니다.
+      </p>
+    );
+  }
 
   // Side by side, each column scrolls on its own rather than the panel
   // scrolling as one piece. That is what keeps the preview on screen while a
