@@ -445,7 +445,16 @@ export const useFlixStore = create((set, get) => ({
     // Optimistic local update; the firmware echoes the authoritative keymap
     // back right after, and debounce-saves to EEPROM ~1.5s after the last
     // change (see raw_hid_receive in QMK/flix_vibe6's keymap.c).
-    set({ keymap: next, lastSync: Date.now(), error: null });
+    //
+    // The detail held for this key described what it used to be, and nothing
+    // was dropping it -- so the panel kept naming the macro that had just
+    // been replaced, and the step editor kept offering it to be saved again.
+    set((s) => {
+      const keyDetails = { ...s.keyDetails };
+      delete keyDetails[selectedKey];
+      return { keymap: next, keyDetails, lastSync: Date.now(), error: null };
+    });
+    get().loadKeyDetail(selectedKey);
   },
 
   // Write several keys in one go, for a whole-device preset. Each packet is
@@ -475,6 +484,13 @@ export const useFlixStore = create((set, get) => ({
       set({ error: `프리셋 적용 실패: ${err.message}` });
       return;
     }
+
+    // Same again, for every key the preset just overwrote.
+    set((s) => {
+      const keyDetails = { ...s.keyDetails };
+      assignments.forEach((a) => delete keyDetails[a.keyIndex]);
+      return { keyDetails };
+    });
 
     const written = new Set(assignments.map((a) => a.keyIndex));
     set((s) => ({

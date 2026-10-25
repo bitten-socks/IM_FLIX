@@ -73,6 +73,16 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
   // Seeded once per key, and only from a detail that arrived whole.
   const seededFor = useRef(null);
 
+  // A different key means none of this belongs to it. Held on to, the editor
+  // went on showing the last key's macro while the new one was being read --
+  // and would have saved it there.
+  useEffect(() => {
+    seededFor.current = null;
+    setSteps([]);
+    setClearedSwipe(null);
+    setSaved(false);
+  }, [keyIndex]);
+
   // Start from what the device already holds, so the tab edits the real
   // sequence rather than silently replacing it with a blank one.
   //
@@ -284,7 +294,7 @@ export default function TimingTab({ keyIndex, detail, onSave }) {
     (s) => steps.length > 0 && steps.every((x) => x.holdMs === s.holdMs && x.gapMs === s.gapMs),
   );
 
-  if (detail && !detailIsComplete(detail)) {
+  if (!detailIsComplete(detail)) {
     return (
       <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5 text-[13px] leading-relaxed text-white/45">
         기기에서 이 키를 읽는 중입니다. 다 읽기 전에는 고칠 수 없습니다 — 덜 읽은 상태로
